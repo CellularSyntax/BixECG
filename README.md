@@ -1,6 +1,6 @@
 # BixECG
 
-<img src="https://github.com/CellularSyntax/BixECG/blob/main/img/logo.png?raw=true" width="300"/>
+<img src="https://github.com/CellularSyntax/BixECG/blob/main/img/logo.png?raw=true" width="1000"/>
 
 ---
 
