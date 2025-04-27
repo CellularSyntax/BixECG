@@ -126,11 +126,6 @@ All pretrained BixECG models and corresponding training logs are available under
 checkpoints/
 ```
 
-Including:
-- BixECG trained on LUDB
-- BixECG trained on Rabbit ECG
-- Quantized BixECG models for ultra-lightweight deployment
-
 ---
 
 ## Android Application
