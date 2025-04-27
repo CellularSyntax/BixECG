@@ -165,7 +165,3 @@ If you use BixECG in your research or development, please cite:
 
 This project is licensed under the MIT License.  
 See the `LICENSE` file for details.
-
----
-
-# 🚀 Let's Bring Real-Time ECG AI to the Edge!
