@@ -15,9 +15,9 @@ from torch.utils.tensorboard import SummaryWriter
 from torchinfo import summary
 import json
 import math
-from scheduler import WarmupCosineScheduler
+from src.utils.scheduler import WarmupCosineScheduler
 
-from helper_fns import (
+from src.utils.helper_fns import (
     log_per_class_f1, extract_beat_aligned_sequences,
     z_normalize, load_ecg_data, filter_ecg,
     get_dataloaders, train_epoch, validate, write_hparams,
@@ -26,7 +26,7 @@ from helper_fns import (
     split_train_val_by_patient,
     get_exclude_sequence_ids, evaluate_macro_f1)
 
-def main():
+def main(results_path="./res"):
     config = json.load(open("conf/BiXLSTM1.json", "r"))
     config["SEQ_LEN"] = int(config["Fs"] * config["seq_dur"])
 
@@ -100,7 +100,7 @@ def main():
     run_name = (f"emb{config['embedding_dim']}_ks{config['conv1d_kernel_size']}_"
                 f"blocks{config['num_blocks']}_do{config['dropout']}")
     log_dir = os.path.join(
-        "runs", run_name + "_" +
+        "./logs/runs", run_name + "_" +
         datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     )
     writer = SummaryWriter(log_dir)
@@ -151,9 +151,8 @@ def main():
                 best_macro_f1 = macro_f1
                 epochs_no_improve = 0
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                model_filename = f"best_model_macroF1_{best_macro_f1:.4f}_epoch{epoch+1}_{timestamp}.pt"
+                model_filename = f"{results_path}/model_{timestamp}/macroF1_{best_macro_f1:.4f}_epoch{epoch+1}_{timestamp}.pt"
                 torch.save(model.state_dict(), model_filename)
-                            # Save a little metadata file alongside
                 metadata = {
                     "epoch": epoch + 1,
                     "macro_f1": float(best_macro_f1),

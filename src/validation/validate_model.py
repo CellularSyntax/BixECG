@@ -14,7 +14,7 @@ from helper_fns_new import (
     select_random_sequences
 )
 
-from validation_helper_fns import (
+from src.utils.validation_helper_fns import (
     apply_bandpass_filter, print_ascii_logo, 
     evluate_on_db, load_model, get_tolerance_map
 )
