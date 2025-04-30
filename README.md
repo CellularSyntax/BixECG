@@ -22,10 +22,9 @@ Running ECG models directly on smartphones or wearables removes the need for con
 
 | Folder/File | Description |
 |:------------|:------------|
-| `scripts/` | Training and evaluation scripts |
-| `configs/` | Configuration files for training and evaluation |
-| `datasets/` | Preprocessed QTDB, LUDB, and Rabbit ECG datasets (.npz format) |
-| `checkpoints/` | Pretrained model weights and logs |
+| `src/` | Backbone scripts like helper functions and model definitions |
+| `conf/` | Configuration files for training and evaluation |
+| `data/` | Preprocessed QTDB, LUDB, and Rabbit ECG datasets (.npz format) |
 | `android_app/` | Source code for the real-time Android deployment |
 | `img/` | Logo and visualization assets |
 | `README.md` | This file |
