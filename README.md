@@ -1,6 +1,6 @@
 # BixECG
 
-<img src="https://github.com/CellularSyntax/BixECG/blob/main/img/logo.png?raw=true" width="1000"/>
+<img src="https://github.com/CellularSyntax/BixECG/blob/master/img/logo.png" width="1000"/>
 
 ---
 
@@ -22,10 +22,9 @@ Running ECG models directly on smartphones or wearables removes the need for con
 
 | Folder/File | Description |
 |:------------|:------------|
-| `scripts/` | Training and evaluation scripts |
-| `configs/` | Configuration files for training and evaluation |
-| `datasets/` | Preprocessed QTDB, LUDB, and Rabbit ECG datasets (.npz format) |
-| `checkpoints/` | Pretrained model weights and logs |
+| `src/` | Backbone scripts like helper functions and model definitions |
+| `conf/` | Configuration files for training and evaluation |
+| `data/` | Preprocessed QTDB, LUDB, and Rabbit ECG datasets (.npz format) |
 | `android_app/` | Source code for the real-time Android deployment |
 | `img/` | Logo and visualization assets |
 | `README.md` | This file |
@@ -109,12 +108,13 @@ We provide preprocessed ECG datasets stored as `.npz` files:
 
 | Dataset | Description | Location |
 |:--------|:-------------|:---------|
-| **QTDB** (MIT-BIH QT Database) | Public benchmark for ECG segmentation | `datasets/qtdb/` |
-| **LUDB** (Lobachevsky University Database) | Public ECG delineation dataset | `datasets/ludb/` |
-| **Rabbit ECG Dataset** | Experimental ECG data from rabbit studies | `datasets/rabbit/` |
+| **QTDB** (MIT-BIH QT Database) | Public benchmark for ECG segmentation used for training | `datasets/qtdb/` |
+| **LUDB** (Lobachevsky University Database) | Public ECG delineation dataset for external evaluation | `datasets/ludb/` |
+| **LVAD Dataset** | Proprietary expert-annotated ECG data from left ventricular assist device patients for external evaluation| `available upon reasonable request` |
+| **Rabbit ECG Dataset** | Proprietary expert-annotated ECG data from rabbit studies for external evaluation| `datasets/rabbit/` |
 
 > 📢 **Important:**  
-> The **LVAD dataset** (patient data) used in the paper cannot be shared publicly due to data protection regulations.
+> The **LVAD dataset** (patient data) used in the paper cannot be shared publicly due to data protection regulations but is available upon reasonable request to the corresponding author.
 
 ---
 
