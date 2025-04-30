@@ -110,7 +110,7 @@ We provide preprocessed ECG datasets stored as `.npz` files:
 |:--------|:-------------|:---------|
 | **QTDB** (MIT-BIH QT Database) | Public benchmark for ECG segmentation used for training | `datasets/qtdb/` |
 | **LUDB** (Lobachevsky University Database) | Public ECG delineation dataset for external evaluation | `datasets/ludb/` |
-| **Circulatory Assist Device Dataset** | Proprietary expert-annotated ECG data from left ventricular assist device patients for external evaluation| `n/a (available upon reasonable request)` |
+| **Circulatory Assist Device Dataset** | Proprietary expert-annotated ECG data from left ventricular assist device patients for external evaluation| `available upon reasonable request` |
 | **Rabbit ECG Dataset** | Proprietary expert-annotated ECG data from rabbit studies for external evaluation| `datasets/rabbit/` |
 
 > 📢 **Important:**  
