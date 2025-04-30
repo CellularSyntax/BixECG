@@ -108,7 +108,7 @@ def main(results_path="./res"):
     epochs_no_improve = 0
     macrof1 = 0.0
 
-    best_macro_f1 = 0.0
+    best_macro_f1 = 0.0 #asd
     epochs_no_improve = 0
 
     val_loss = 0.0 
