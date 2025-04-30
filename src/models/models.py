@@ -1,5 +1,6 @@
-from bixecglstm import BiXLSTM, xLSTM
-from jimenez_cnn_1d import JimenezCNN1D
+from .bixecg import BiXLSTM, xLSTM
+from .jimenez_cnn import JimenezCNN1D
+from .peimankar_cnn_bilstm import PeimankarCnnBilstm
 
 def get_model(name: str, **kwargs):
     """
@@ -24,6 +25,7 @@ def get_model(name: str, **kwargs):
         "bixlstm": BiXLSTM,
         "xlstm": xLSTM,
         "jimenezcnn1d": JimenezCNN1D,
+        "peimankarcnnbilstm": PeimankarCnnBilstm,
     }
 
     if name not in model_registry:
