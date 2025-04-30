@@ -1,0 +1,29 @@
+{
+  "model": {
+    "name": "liucnnbilstm",
+    "params": {
+      "input_dim": 1,
+      "num_classes": 4,
+      "cnn_channels": [32, 64, 128],
+      "kernel_sizes": [5, 5, 3],
+      "pool_sizes": [2, 2, 2],
+      "lstm_hidden_size": 128,
+      "lstm_layers": 1,
+      "dropout": 0.3
+    }
+  },
+  "batch_size": 256,
+  "epochs": 1,
+  "initial_lr": 0.01,
+  "seq_dur": 1.2,
+  "Fs": 250,
+  "target_names": ["No Wave", "P-Wave", "QRS Complex", "T-Wave"],
+  "label_smoothing": 0.05,
+  "f1_eval_interval": 5,
+  "use_20_percent": true,
+  "tolerance_map": {
+    "1": 52,
+    "2": 48,
+    "3": 124
+  }
+}
