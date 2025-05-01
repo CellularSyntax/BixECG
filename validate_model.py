@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 
-from helper_fns_new import (
+from src.utils.helper_fns import (
     extract_sequences_simple, z_normalize,
     select_random_sequences
 )
