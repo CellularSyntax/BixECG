@@ -107,7 +107,7 @@ def parse_args():
     )
 
     parser.add_argument("--model_name", type=str, required=True,
-                        help="Name of the saved model checkpoint (without extension).")
+                        help="Name of the saved model checkpoint.")
     parser.add_argument("--data_dir", type=str, default="../DATA/ludb",
                         help="Path to the ECG database directory.")
     parser.add_argument("--filter_data", action="store_true",
@@ -130,6 +130,7 @@ def parse_args():
 def main_cli():
     print_ascii_logo()
     args = parse_args()
+    model_name = os.path.splitext(model_name)[0]
 
     main(
         model_name=args.model_name,
