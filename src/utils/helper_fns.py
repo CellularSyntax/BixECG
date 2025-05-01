@@ -48,15 +48,18 @@ def apply_bandpass_filter(signal, lowcut=0.5, highcut=50, fs=250, order=3):
     b, a = butter_bandpass(lowcut, highcut, fs, order)
     return filtfilt(b, a, signal)
 
-def log_per_class_f1(model, dataloader, epoch, writer, class_names, ignore_index=-100):
+def log_per_class_f1(model: nn.Module, dataloader, epoch, writer, class_names, ignore_index=-100, device=None):
     model.eval()
     all_preds = []
     all_trues = []
 
+    if device == None:
+        device = next(model.parameters()).device
+
     with torch.no_grad():
         for x_batch, y_batch in dataloader:
-            x_batch = x_batch.cuda()
-            y_batch = y_batch.cuda()
+            x_batch = x_batch.to(device)
+            y_batch = y_batch.to(device)
 
             logits = model(x_batch)
             logits[y_batch == ignore_index] = float('-inf')
@@ -86,13 +89,15 @@ def log_per_class_f1(model, dataloader, epoch, writer, class_names, ignore_index
     print(f"  Macro F1: {macro_f1:.4f}")
     return f1s, macro_f1
 
-def evaluate_macro_f1(model, val_loader):
+def evaluate_macro_f1(model, val_loader, device=None):
     model.eval()
     all_preds = []
     all_trues = []
+    if device == None:
+        device = next(model.parameters()).device
     with torch.no_grad():
         for x_batch, y_batch in val_loader:
-            x_batch, y_batch = x_batch.cuda(), y_batch.cuda()
+            x_batch, y_batch = x_batch.to(device), y_batch.to(device)
             logits = model(x_batch)
             preds = torch.argmax(logits, dim=-1)
             all_preds.append(preds.cpu().numpy())
@@ -425,13 +430,16 @@ def build_model(config):
                 slstm_backend=config['slstm_backend']
             ).cuda()
 
-def train_epoch(model, loader, optimizer, loss_fn):
+def train_epoch(model, loader, optimizer, loss_fn, device=None):
     model.train()
-    total_loss, num_batches = 0.0, 0
+    total_loss = 0.0
     start_time = time.time()
 
+    if device == None:
+        device = next(model.parameters()).device
+
     for x, y in loader:
-        x, y = x.cuda(), y.cuda()
+        x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
 
         logits = model(x)
@@ -443,42 +451,46 @@ def train_epoch(model, loader, optimizer, loss_fn):
         loss_ce = loss_fn(logits.permute(0, 2, 1), y).mean()
 
         # Temporal consistency
-        valid_mask = (y != -100).float()
-        valid_mask_diff = valid_mask[:, 1:] * valid_mask[:, :-1]
+        # valid_mask = (y != -100).float()
+        # valid_mask_diff = valid_mask[:, 1:] * valid_mask[:, :-1]
 
-        probs = torch.softmax(logits, dim=-1)
-        diff = probs[:, 1:, :] - probs[:, :-1, :]
-        denom = valid_mask_diff.sum() + 1e-8
-        temporal_consistency = (diff.abs().sum(-1) * valid_mask_diff).sum() / denom
+        # probs = torch.softmax(logits, dim=-1)
+        # diff = probs[:, 1:, :] - probs[:, :-1, :]
+        # denom = valid_mask_diff.sum() + 1e-8
+        # temporal_consistency = (diff.abs().sum(-1) * valid_mask_diff).sum() / denom
 
-        pred_classes = torch.argmax(probs, dim=-1)  # (B, T)
-        label_switches = (pred_classes[:, 1:] != pred_classes[:, :-1]).float()
-        label_switches = label_switches * valid_mask_diff  # mask invalid transitions
+        # pred_classes = torch.argmax(probs, dim=-1)  # (B, T)
+        # label_switches = (pred_classes[:, 1:] != pred_classes[:, :-1]).float()
+        # label_switches = label_switches * valid_mask_diff  # mask invalid transitions
 
-        change_loss = label_switches.sum() / (valid_mask_diff.sum() + 1e-8)
+        # change_loss = label_switches.sum() / (valid_mask_diff.sum() + 1e-8)
 
         loss = loss_ce
 
         # Backward pass
-        loss.backward()
-        nn_utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
-        optimizer.step()
-
+        if not torch.isnan(loss):
+            loss.backward()
+            nn_utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
+            optimizer.step()
         total_loss += loss.item()
-        num_batches += 1
 
     duration = time.time() - start_time
     print(f"🕒 Train epoch completed in {duration:.2f} seconds")
-    return total_loss / num_batches
+    if torch.isnan(total_loss):
+        return total_loss
+    return total_loss / len(loader)
 
-def validate(model, loader, loss_fn):
+def validate(model, loader, loss_fn, device=None):
     model.eval()
     total_loss = 0.0
     start_time = time.time()
 
+    if device == None:
+        device = next(model.parameters()).device
+
     with torch.no_grad():
         for x, y in loader:
-            x, y = x.cuda(), y.cuda()
+            x, y = x.to(device), y.to(device)
             logits = model(x)
             loss = loss_fn(logits.permute(0, 2, 1), y)
             total_loss += loss.mean().item()
