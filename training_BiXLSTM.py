@@ -26,7 +26,7 @@ from src.utils.helper_fns import (
     split_train_val_by_patient,
     get_exclude_sequence_ids, evaluate_macro_f1)
 
-def main(results_path="./res"):
+def main(results_path="./results"):
     config = json.load(open("conf/BiXLSTM1.json", "r"))
     config["SEQ_LEN"] = int(config["Fs"] * config["seq_dur"])
 
