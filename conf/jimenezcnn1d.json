@@ -1,12 +1,8 @@
 {
-    "model": {
-      "name": "jimenezcnn1d",
-      "params": {
-        "input_dim": 1,
-        "base_channels": 32,
-        "num_classes": 4
-      }
-    },
+    "name": "jimenezcnn1d",
+    "input_dim": 1,
+    "base_channels": 32,
+    "num_classes": 4,
     "base_path": "../DATA/QTDataset",
     "epochs": 1,
     "batch_size": 256,
