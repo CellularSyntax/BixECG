@@ -1,4 +1,5 @@
 {
+    "name": "BiXLSTM1",
     "num_classes": 4,
     "embedding_dim": 32,
     "num_blocks": 5,

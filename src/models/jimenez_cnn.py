@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-
+import torch.nn.functional as F
 
 class ConvBlock1D(nn.Module):
     """Two-layer 1D convolutional block with BatchNorm and ReLU."""
@@ -17,6 +17,20 @@ class ConvBlock1D(nn.Module):
 
     def forward(self, x):
         return self.block(x)
+
+
+def center_crop(enc_feat, ref_feat):
+    """Crop enc_feat (B, C, L_enc) to match ref_feat (B, C, L_ref) along time axis."""
+    _, _, L_enc = enc_feat.shape
+    _, _, L_ref = ref_feat.shape
+    if L_enc == L_ref:
+        return enc_feat
+    if L_enc < L_ref:
+        raise ValueError(f"Cannot crop: encoder length {L_enc} < target {L_ref}")
+    delta = L_enc - L_ref
+    start = delta // 2
+    end = start + L_ref
+    return enc_feat[:, :, start:end]
 
 
 class JimenezCNN1D(nn.Module):
@@ -67,20 +81,21 @@ class JimenezCNN1D(nn.Module):
 
         # Decoder
         d4 = self.up4(e5)
-        d4 = torch.cat([d4, e4], dim=1)
+        d4 = torch.cat([d4, center_crop(e4, d4)], dim=1)
         d4 = self.dec4(d4)
 
         d3 = self.up3(d4)
-        d3 = torch.cat([d3, e3], dim=1)
+        d3 = torch.cat([d3, center_crop(e3, d3)], dim=1)
         d3 = self.dec3(d3)
 
         d2 = self.up2(d3)
-        d2 = torch.cat([d2, e2], dim=1)
+        d2 = torch.cat([d2, center_crop(e2, d2)], dim=1)
         d2 = self.dec2(d2)
 
         d1 = self.up1(d2)
-        d1 = torch.cat([d1, e1], dim=1)
+        d1 = torch.cat([d1, center_crop(e1, d1)], dim=1)
         d1 = self.dec1(d1)
 
-        out = self.out_conv(d1)  # (B, num_classes, T)
-        return out.permute(0, 2, 1)  # → (B, T, num_classes)
+        out = self.out_conv(d1)  # (B, num_classes, T_out)
+        out = F.interpolate(out, size=x.shape[2], mode="linear", align_corners=True)
+        return out.permute(0, 2, 1)  # (B, T, num_classes)
