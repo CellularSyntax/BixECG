@@ -21,7 +21,7 @@ from src.utils.helper_fns import (
     log_per_class_f1, extract_beat_aligned_sequences,
     z_normalize, load_ecg_data, filter_ecg,
     get_dataloaders, train_epoch, validate, write_hparams,
-    build_model, compute_class_weights,
+    build_model, compute_class_weights, get_device,
     load_ecg_data, save_model_with_metadata,
     split_train_val_by_patient, get_exclude_sequence_ids,
     evaluate_macro_f1)
@@ -29,6 +29,8 @@ from src.utils.helper_fns import (
 def main(results_path="./res"):
     config = json.load(open("conf/jimenezcnn1d.json", "r"))
     config["SEQ_LEN"] = int(config["Fs"] * config["seq_dur"])
+
+    device = get_device(config)
 
     # Data Loading and Preprocessing
     x_train_raw, y_train_raw, patient_id_train, lead_train, _, _, _, _ = load_ecg_data(config)
@@ -70,9 +72,9 @@ def main(results_path="./res"):
     print(f"Validation sequences: {x_val_seq.shape[0]}")
 
     # Class weights
-    class_weights = compute_class_weights(y_train_seq, config["num_classes"])
+    class_weights = compute_class_weights(y_train_seq, config["model"]["params"]["num_classes"])
     class_weights[0] *= 2.0  # Adjust class weights for No Wave class
-    class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).cuda()
+    class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
 
     print(f"Class weights: {class_weights_tensor}")
 
@@ -80,7 +82,7 @@ def main(results_path="./res"):
     train_loader, val_loader = get_dataloaders(x_train_seq, y_train_seq, x_val_seq, y_val_seq, config["batch_size"])
 
     # Model
-    model = build_model(config)
+    model = build_model(config).to(device)
     summary(model)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config["initial_lr"])
@@ -94,7 +96,7 @@ def main(results_path="./res"):
 
     loss_fn = nn.CrossEntropyLoss(
         ignore_index=-100, weight=class_weights_tensor, label_smoothing=0.05
-    ).cuda()
+    ).to(device)
 
     # TensorBoard logging setup
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))

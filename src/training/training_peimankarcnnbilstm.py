@@ -10,7 +10,7 @@ from torchinfo import summary
 from src.utils.helper_fns import (
     log_per_class_f1, extract_beat_aligned_sequences, z_normalize,
     load_ecg_data, filter_ecg, get_dataloaders, train_epoch,
-    validate, write_hparams, compute_class_weights,
+    validate, write_hparams, compute_class_weights, get_device,
     split_train_val_by_patient, get_exclude_sequence_ids,
     evaluate_macro_f1, save_model_with_metadata, build_model
 )
@@ -21,6 +21,8 @@ def main(results_path="./res"):
     config_path = "conf/peimankarcnnbilstm.json"
     with open(config_path, "r") as f:
         config = json.load(f)
+
+    device = get_device(config)
 
     config["SEQ_LEN"] = int(config["Fs"] * config["seq_dur"])
 
@@ -48,9 +50,9 @@ def main(results_path="./res"):
     print(f"Train sequences: {x_train.shape[0]}")
     print(f"Validation sequences: {x_val.shape[0]}")
 
-    class_weights = compute_class_weights(y_train, config["num_classes"])
+    class_weights = compute_class_weights(y_train, config["model"]["params"]["num_classes"])
     class_weights[0] *= 2.0
-    class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).cuda()
+    class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
     print(f"Class weights: {class_weights_tensor}")
 
     train_loader, val_loader = get_dataloaders(
@@ -58,7 +60,7 @@ def main(results_path="./res"):
     )
 
     # === Build model ===
-    model = build_model(config)
+    model = build_model(config).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=config["initial_lr"])
 
     scheduler = WarmupCosineScheduler(
@@ -72,7 +74,7 @@ def main(results_path="./res"):
         ignore_index=-100,
         weight=class_weights_tensor,
         label_smoothing=config["label_smoothing"]
-    ).cuda()
+    ).to(device)
 
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
     # Use model name and timestamp to generate run-specific log folder

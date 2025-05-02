@@ -22,16 +22,10 @@ from src.utils.helper_fns import (
     log_per_class_f1, extract_beat_aligned_sequences,
     z_normalize, load_ecg_data, filter_ecg,
     get_dataloaders, train_epoch, validate, write_hparams,
-    build_model, compute_class_weights,
-<<<<<<< HEAD:training_BiXLSTM.py
-    load_ecg_data,
-    split_train_val_by_patient, get_device,
-    get_exclude_sequence_ids, evaluate_macro_f1)
-=======
+    build_model, compute_class_weights, get_device,
     load_ecg_data, save_model_with_metadata,
     split_train_val_by_patient, get_exclude_sequence_ids,
     evaluate_macro_f1)
->>>>>>> 0f732e6e6df04ba4852f60d20c1fb2b692a08640:src/training/training_bixlstm.py
 
 def main(results_path="./results/training"):
     config = json.load(open("conf/BiXLSTM1.json", "r"))
@@ -107,14 +101,6 @@ def main(results_path="./results/training"):
     ).to(device)
 
     # TensorBoard logging setup
-<<<<<<< HEAD:training_BiXLSTM.py
-    run_name = (f"emb{config["model"]["params"]['embedding_dim']}_ks{config["model"]["params"]['conv1d_kernel_size']}_"
-                f"blocks{config["model"]["params"]['num_blocks']}_do{config["model"]["params"]['dropout']}")
-    log_dir = os.path.join(
-        "./logs/runs", run_name + "_" +
-        datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    )
-=======
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 
     # Use model name and timestamp to generate run-specific log folder
@@ -124,7 +110,6 @@ def main(results_path="./results/training"):
 
     # Create log directory if it doesn't exist
     os.makedirs(log_dir, exist_ok=True)    
->>>>>>> 0f732e6e6df04ba4852f60d20c1fb2b692a08640:src/training/training_bixlstm.py
     writer = SummaryWriter(log_dir)
 
     epochs_no_improve = 0
