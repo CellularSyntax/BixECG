@@ -1,15 +1,15 @@
 {
   "model": {
-    "name": "liucnnbilstm",
+    "name": "peimankarcnnbilstm",
     "params": {
       "input_dim": 1,
       "num_classes": 4,
       "cnn_channels": [32, 64, 128],
       "kernel_sizes": [5, 5, 3],
-      "pool_sizes": [2, 2, 2],
-      "lstm_hidden_size": 128,
-      "lstm_layers": 1,
-      "dropout": 0.3
+      "lstm_hidden_sizes": [250, 125],
+      "lstm_layers": [1, 1],
+      "bidirectional": true,
+      "dropouts": [0.3, 0.3]
     }
   },
   "base_path": "../DATA/QTDataset",
@@ -23,8 +23,8 @@
   "f1_eval_interval": 5,
   "use_20_percent": true,
   "tolerance_map": {
-    "1": 52,
-    "2": 48,
-    "3": 124
+      "1": 52,
+      "2": 48,
+      "3": 124
   }
 }

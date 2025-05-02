@@ -26,7 +26,7 @@ from src.utils.helper_fns import (
     split_train_val_by_patient,
     get_exclude_sequence_ids, evaluate_macro_f1)
 
-def main(results_path="./res"):
+def main(results_path="./results"):
     config = json.load(open("conf/BiXLSTM1.json", "r"))
     config["SEQ_LEN"] = int(config["Fs"] * config["seq_dur"])
 
@@ -112,7 +112,7 @@ def main(results_path="./res"):
     epochs_no_improve = 0
 
     val_loss = 0.0 
-    best_model_name = None
+    best_model_path = None
 
     try:
         for epoch in range(config["epochs"]):
@@ -151,8 +151,11 @@ def main(results_path="./res"):
                 best_macro_f1 = macro_f1
                 epochs_no_improve = 0
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                model_filename = f"{results_path}/model_{timestamp}/macroF1_{best_macro_f1:.4f}_epoch{epoch+1}_{timestamp}.pt"
-                torch.save(model.state_dict(), model_filename)
+                model_dir = os.path.join(results_path, f"model_{timestamp}")
+                os.makedirs(model_dir, exist_ok=True)
+                model_filename = f"macroF1_{best_macro_f1:.4f}_epoch{epoch+1}_{timestamp}"
+                best_model_path = os.path.join(model_dir, f"{model_filename}.pt")
+                torch.save(model.state_dict(), best_model_path)
                 metadata = {
                     "epoch": epoch + 1,
                     "macro_f1": float(best_macro_f1),
@@ -162,11 +165,11 @@ def main(results_path="./res"):
                     "timestamp": timestamp,
                     "config": config 
                 }
-                with open(model_filename.replace(".pt", ".json"), "w") as f:
+                with open(os.path.join(model_dir, f"{model_filename}.json"), "w") as f:
                     json.dump(metadata, f, indent=4)
-                best_model_name = model_filename
+                
 
-                print(f"Saved new best model: {model_filename} and metadata")
+                print(f"Saved new best model: {best_model_path} and metadata")
             else:
                 epochs_no_improve += 1
                 print(f"                   No improvement for {epochs_no_improve} epochs.")
@@ -186,7 +189,7 @@ def main(results_path="./res"):
         writer.close()
 
         # Load the best model for evaluation
-        model.load_state_dict(torch.load(best_model_name))
+        model.load_state_dict(torch.load(best_model_path))
         writer = SummaryWriter(log_dir)
 
         writer.close()
