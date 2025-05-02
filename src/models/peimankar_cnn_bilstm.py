@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import Tensor
 import numpy as np
 
@@ -10,7 +11,8 @@ class DropHiddenState(nn.Module):
 
 class PeimankarCnnBilstm(nn.Module):
     """
-    https://www.sciencedirect.com/science/article/abs/pii/S0957417420307065
+    CNN-BiLSTM model for ECG delineation based on:
+    Peimankar et al., 2020 (Expert Systems with Applications).
     """
     def __init__(self,
                  input_dim=1,
@@ -22,7 +24,9 @@ class PeimankarCnnBilstm(nn.Module):
                  bidirectional=True,
                  dropouts=[0.3, 0.3]):
         super().__init__()
-        
+
+        self.input_dim = input_dim
+        self.num_classes = num_classes
 
         self.conv_blocks = nn.Sequential()
         in_channels = input_dim
@@ -45,37 +49,40 @@ class PeimankarCnnBilstm(nn.Module):
         input_size = cnn_channels[-1]
         factor = 2 if bidirectional else 1
 
-        for i, (hidden_size, layers, dropout) in enumerate(zip(lstm_hidden_sizes, lstm_layers, dropouts)):
-            self.lstm_blocks.add_module(f"lstm {i}", nn.LSTM(input_size, 
-                                                             hidden_size, 
-                                                             num_layers=layers, 
-                                                             bidirectional=bidirectional, 
-                                                             batch_first=True,
-                                                             dropout=dropout))
-            self.lstm_blocks.add_module(f"drop_h {i}", DropHiddenState())
+        for i, (hidden_size, num_layers, dropout) in enumerate(zip(lstm_hidden_sizes, lstm_layers, dropouts)):
+            self.lstm_blocks.add_module(
+                f"lstm_{i}",
+                nn.LSTM(
+                    input_size=input_size,
+                    hidden_size=hidden_size,
+                    num_layers=num_layers,
+                    bidirectional=bidirectional,
+                    batch_first=True,
+                    dropout=dropout if num_layers > 1 else 0.0
+                )
+            )
+            self.lstm_blocks.add_module(f"drop_h_{i}", DropHiddenState())
             input_size = factor * hidden_size
-        
 
-        self.dec = nn.Linear(in_features=factor*lstm_hidden_sizes[-1], out_features=num_classes)
+        self.dec = nn.Linear(in_features=input_size, out_features=num_classes)
 
     def forward(self, x: Tensor) -> Tensor:
         """
-            input: (B, T, input_dim)
-            output: (B, T, num_classes)
+        Input:  x (B, T, input_dim)
+        Output: logits (B, T, num_classes)
         """
-        x = self.conv_blocks(x.permute(0, 2, 1)).permute(0, 2, 1)
-        x = self.lstm_blocks(x)
-        x = self.dec(x)
-        return x
-    
+        B, T, _ = x.shape
+        x = self.conv_blocks(x.permute(0, 2, 1))  # → (B, C, T')
+        x = x.permute(0, 2, 1)                   # → (B, T', C)
+
+        x = self.lstm_blocks(x)                  # → (B, T', H)
+        x = self.dec(x)                          # → (B, T', num_classes)
+
+        # Interpolate to match original input length T
+        x = F.interpolate(x.permute(0, 2, 1), size=T, mode="linear", align_corners=True)
+        return x.permute(0, 2, 1)                # → (B, T, num_classes)
+
     def __str__(self):
-        """
-        Model prints with number of trainable parameters
-        """
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
         params = sum([np.prod(p.size()) for p in model_parameters])
-        return super().__str__() + '\nTrainable parameters: {}'.format(params)
-
-# model = PeimankarCnnBilstm()
-# x = torch.rand(32, 100, 1)
-# model(x).shape
+        return super().__str__() + f'\nTrainable parameters: {params}'

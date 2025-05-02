@@ -23,9 +23,15 @@ from src.utils.helper_fns import (
     z_normalize, load_ecg_data, filter_ecg,
     get_dataloaders, train_epoch, validate, write_hparams,
     build_model, compute_class_weights,
+<<<<<<< HEAD:training_BiXLSTM.py
     load_ecg_data,
     split_train_val_by_patient, get_device,
     get_exclude_sequence_ids, evaluate_macro_f1)
+=======
+    load_ecg_data, save_model_with_metadata,
+    split_train_val_by_patient, get_exclude_sequence_ids,
+    evaluate_macro_f1)
+>>>>>>> 0f732e6e6df04ba4852f60d20c1fb2b692a08640:src/training/training_bixlstm.py
 
 def main(results_path="./results/training"):
     config = json.load(open("conf/BiXLSTM1.json", "r"))
@@ -101,12 +107,24 @@ def main(results_path="./results/training"):
     ).to(device)
 
     # TensorBoard logging setup
+<<<<<<< HEAD:training_BiXLSTM.py
     run_name = (f"emb{config["model"]["params"]['embedding_dim']}_ks{config["model"]["params"]['conv1d_kernel_size']}_"
                 f"blocks{config["model"]["params"]['num_blocks']}_do{config["model"]["params"]['dropout']}")
     log_dir = os.path.join(
         "./logs/runs", run_name + "_" +
         datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     )
+=======
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+
+    # Use model name and timestamp to generate run-specific log folder
+    run_name = config["name"]
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_dir = os.path.join(base_dir, "logs", "runs", f"{run_name}_{timestamp}")
+
+    # Create log directory if it doesn't exist
+    os.makedirs(log_dir, exist_ok=True)    
+>>>>>>> 0f732e6e6df04ba4852f60d20c1fb2b692a08640:src/training/training_bixlstm.py
     writer = SummaryWriter(log_dir)
 
     epochs_no_improve = 0
@@ -130,7 +148,7 @@ def main(results_path="./results/training"):
             print(f"                   Val Loss: {val_loss:.4f}")
             writer.add_scalar("Loss/val", val_loss, epoch)
 
-            # Log learning rate
+            # Log learning rates
             current_lr = optimizer.param_groups[0]['lr']
             writer.add_scalar("LR", current_lr, epoch)
             print(f"Current LR: {current_lr:.6f}")
@@ -154,26 +172,16 @@ def main(results_path="./results/training"):
             if macro_f1 > best_macro_f1:
                 best_macro_f1 = macro_f1
                 epochs_no_improve = 0
-                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                model_dir = os.path.join(results_path, f"model_{timestamp}")
-                os.makedirs(model_dir, exist_ok=True)
-                model_filename = f"macroF1_{best_macro_f1:.4f}_epoch{epoch+1}_{timestamp}"
-                best_model_path = os.path.join(model_dir, f"{model_filename}.pt")
-                torch.save(model.state_dict(), best_model_path)
-                metadata = {
-                    "epoch": epoch + 1,
-                    "macro_f1": float(best_macro_f1),
-                    "train_loss": float(train_loss),
-                    "val_loss": float(val_loss),
-                    "learning_rate": float(current_lr),
-                    "timestamp": timestamp,
-                    "config": config 
-                }
-                with open(os.path.join(model_dir, f"{model_filename}.json"), "w") as f:
-                    json.dump(metadata, f, indent=4)
-                
-
-                print(f"Saved new best model: {best_model_path} and metadata")
+                best_model_name = save_model_with_metadata(
+                        model=model,
+                        config=config,
+                        results_path=results_path,
+                        best_macro_f1=best_macro_f1,
+                        epoch=epoch,
+                        train_loss=train_loss,
+                        val_loss=val_loss,
+                        current_lr=current_lr
+                ) 
             else:
                 epochs_no_improve += 1
                 print(f"                   No improvement for {epochs_no_improve} epochs.")

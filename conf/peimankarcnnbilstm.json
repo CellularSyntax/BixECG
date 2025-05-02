@@ -1,4 +1,5 @@
 {
+  "name": "peimankarcnnbilstm",
   "model": {
     "name": "peimankarcnnbilstm",
     "params": {

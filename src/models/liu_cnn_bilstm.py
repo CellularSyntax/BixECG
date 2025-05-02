@@ -1,17 +1,11 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class LiuCNNBilstm(nn.Module):
     """
     Lightweight CNN-BiLSTM model for ECG delineation, based on:
-    Liu et al., "Robust electrocardiogram delineation model for automatic
-    morphological abnormality interpretation", Scientific Reports, 2023.
-    https://www.nature.com/articles/s41598-023-40965-1
-
-    Architecture:
-    - 3 Conv1D blocks (with BatchNorm, ReLU, MaxPool1D)
-    - 1 BiLSTM layer
-    - 1 Fully connected projection layer
+    Liu et al., Scientific Reports, 2023.
     """
 
     def __init__(self,
@@ -24,6 +18,9 @@ class LiuCNNBilstm(nn.Module):
                  lstm_layers=1,
                  dropout=0.3):
         super().__init__()
+
+        self.input_dim = input_dim
+        self.num_classes = num_classes
 
         self.conv_blocks = nn.Sequential()
         in_channels = input_dim
@@ -48,11 +45,16 @@ class LiuCNNBilstm(nn.Module):
         self.fc = nn.Linear(2 * lstm_hidden_size, num_classes)
 
     def forward(self, x):
-        # x: (B, T, C=1)
-        x = x.permute(0, 2, 1)           # → (B, C, T)
-        x = self.conv_blocks(x)          # → (B, C_out, T_pooled)
+        # Input shape: (B, T, C)
+        B, T, _ = x.shape
+
+        x = x.permute(0, 2, 1)      # → (B, C, T)
+        x = self.conv_blocks(x)     # → (B, C_out, T_pooled)
         x = self.dropout(x)
-        x = x.permute(0, 2, 1)           # → (B, T_pooled, C_out)
-        x, _ = self.bilstm(x)            # → (B, T_pooled, 2*hidden)
-        logits = self.fc(x)              # → (B, T_pooled, num_classes)
-        return logits
+        x = x.permute(0, 2, 1)      # → (B, T_pooled, C_out)
+        x, _ = self.bilstm(x)       # → (B, T_pooled, 2*hidden)
+        logits = self.fc(x)         # → (B, T_pooled, num_classes)
+
+        # Interpolate back to original T
+        logits = F.interpolate(logits.permute(0, 2, 1), size=T, mode="linear", align_corners=True)
+        return logits.permute(0, 2, 1)  # → (B, T, num_classes)

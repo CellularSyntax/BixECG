@@ -1,6 +1,6 @@
 {
-
     "device": "cuda",
+    "name": "BiXLSTM1",
     
     "base_path": "../DATA/QTDataset",
     "epochs": 1,

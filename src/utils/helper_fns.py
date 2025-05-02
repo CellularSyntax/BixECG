@@ -5,6 +5,8 @@ import os
 import random
 import sys
 import time
+import datetime
+import json
 
 # Third-party libraries
 import numpy as np
@@ -23,14 +25,24 @@ import torch.nn as nn
 import torch.nn.utils as nn_utils
 
 # Local imports
-from src.models.models import BiXLSTM, xLSTM
 from src.models.models import get_model
+from src.models.bixecg import BiXLSTM, xLSTM
+from src.models.jimenez_cnn import JimenezCNN1D
+from src.models.liu_cnn_bilstm import LiuCNNBilstm
+from src.models.peimankar_cnn_bilstm import PeimankarCnnBilstm
 
 @contextlib.contextmanager
-def redirect_output_to_file(log_path="./logs/build_log.txt"):
-    # create logs directory if it doesn't exist
-    os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    with open(log_path, 'w') as logfile:
+def redirect_output_to_file(log_path="logs/build_log.txt"):
+    """
+    Redirects stdout and stderr to a file in the project root, regardless of where the script is run.
+    Automatically creates the directory if it does not exist.
+    """
+    # Resolve to project root
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+    abs_log_path = os.path.join(base_dir, log_path)
+
+    os.makedirs(os.path.dirname(abs_log_path), exist_ok=True)
+    with open(abs_log_path, 'w') as logfile:
         old_stdout, old_stderr = sys.stdout, sys.stderr
         sys.stdout, sys.stderr = logfile, logfile
         try:
@@ -410,37 +422,7 @@ def get_device(config):
 def build_model(config):
     with redirect_output_to_file(): # Suppress output from the model initialization as it can be verbose
         return get_model(config["model"]["name"], **config["model"]["params"])
-#         if config.get("bidirectional", False):
-#             return BiXLSTM(
-#                 seq_length=config["SEQ_LEN"],
-#                 input_dim=1,
-#                 embedding_dim=config["embedding_dim"],
-#                 num_blocks=config["num_blocks"],
-#                 num_heads=config["num_heads"],
-#                 conv1d_kernel_size=config["conv1d_kernel_size"],
-#                 proj_factor=config["proj_factor"],
-#                 use_slstm=True,
-#                 slstm_at=config["slstm_at"],
-#                 dropout=config["dropout"],
-#                 num_classes=config["num_classes"],
-#                 slstm_backend=config['slstm_backend']
-#             ).cuda()
-#         else:
-#             return xLSTM(
-#                 seq_length=config["SEQ_LEN"],
-#                 input_dim=1,
-#                 embedding_dim=config["embedding_dim"],
-#                 num_blocks=config["num_blocks"],
-#                 num_heads=config["num_heads"],
-#                 conv1d_kernel_size=config["conv1d_kernel_size"],
-#                 proj_factor=config["proj_factor"],
-#                 use_slstm=True,
-#                 slstm_at=config["slstm_at"],
-#                 dropout=config["dropout"],
-#                 num_classes=config["num_classes"],
-#                 slstm_backend=config['slstm_backend']
-#             ).cuda()
-
+    
 def train_epoch(model, loader, optimizer, loss_fn, device=None):
     model.train()
     total_loss = 0.0
@@ -509,6 +491,11 @@ def validate(model, loader, loss_fn, device=None):
     return total_loss / len(loader)
 
 def write_hparams(writer, config, val_loss=0.0, macrof1=0.0):
+    # checm if embedding_dim, conv1d_kernel_size, num_blocks, dropout, num_heads, slstm_at are in config; if not, put "n/a" in config
+    for key in ['embedding_dim', 'conv1d_kernel_size', 'num_blocks', 'dropout', 'num_heads', 'slstm_at']:
+        if key not in config:
+            config[key] = "n/a"
+
     hparams = {
         **config["model"]["params"],
         'seq_len': config['SEQ_LEN'],
@@ -673,3 +660,47 @@ def majority_vote_smoothing(predictions, window_size=5):
         smoothed[:, i] = scipy.stats.mode(window, axis=1, keepdims=False)[0]
 
     return smoothed
+
+def save_model_with_metadata(model, config, results_path, best_macro_f1, epoch,
+                             train_loss, val_loss, current_lr):
+    """
+    Save model checkpoint and metadata to a timestamped directory.
+
+    Arguments:
+        model: PyTorch model
+        config: full config dict (must contain 'name')
+        results_path: relative or absolute path (e.g., "res" or "/path/to/res")
+        best_macro_f1: best macro-F1 score so far
+        epoch: current epoch
+        train_loss, val_loss, current_lr: training stats
+
+    Returns:
+        model_filename (str): Absolute path to the saved model file.
+    """
+    # Resolve absolute base path regardless of script location
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+    abs_results_path = os.path.join(base_dir, results_path)
+
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    model_dir = os.path.join(abs_results_path, f"{config['name']}_{timestamp}")
+    os.makedirs(model_dir, exist_ok=True)
+
+    model_filename = os.path.join(model_dir, f"macroF1_{best_macro_f1:.4f}_epoch{epoch+1}_{timestamp}.pt")
+    torch.save(model.state_dict(), model_filename)
+
+    metadata = {
+        "epoch": epoch + 1,
+        "macro_f1": float(best_macro_f1),
+        "train_loss": float(train_loss),
+        "val_loss": float(val_loss),
+        "learning_rate": float(current_lr),
+        "timestamp": timestamp,
+        "config": config
+    }
+
+    metadata_filename = model_filename.replace(".pt", ".json")
+    with open(metadata_filename, "w") as f:
+        json.dump(metadata, f, indent=4)
+
+    print(f"Saved new best model: {model_filename} and metadata")
+    return model_filename
