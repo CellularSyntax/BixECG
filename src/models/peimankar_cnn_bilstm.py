@@ -27,10 +27,18 @@ class PeimankarCnnBilstm(nn.Module):
         self.conv_blocks = nn.Sequential()
         in_channels = input_dim
 
+        dilation = 1
+        stride = 1
+        padding = [dilation * (kernel-stride) / 2 for kernel in kernel_sizes]
+
         for i, (out_channels, k) in enumerate(zip(cnn_channels, kernel_sizes)):
-            self.conv_blocks.add_module(f"conv_{i}", nn.Conv1d(in_channels, out_channels, kernel_size=k))
+            self.conv_blocks.add_module(f"conv_{i}", nn.Conv1d(in_channels, 
+                                                               out_channels, 
+                                                               kernel_size=k, 
+                                                               stride=stride, 
+                                                               dilation=dilation))
             self.conv_blocks.add_module(f"relu_{i}", nn.ReLU())
-            self.conv_blocks.add_module(f"zp_{i}", nn.ZeroPad1d(1))
+            self.conv_blocks.add_module(f"zp_{i}", nn.ZeroPad1d(int(padding[i])))
             in_channels = out_channels
 
         self.lstm_blocks = nn.Sequential()

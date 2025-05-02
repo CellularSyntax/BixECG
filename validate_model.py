@@ -130,10 +130,12 @@ def parse_args():
 def main_cli():
     print_ascii_logo()
     args = parse_args()
-    model_name = os.path.splitext(model_name)[0]
+    model_name = args.model_name
+    if model_name.endswith(".pt") or model_name.endswith(".pth"):
+        model_name = os.path.splitext(args.model_name)[0]
 
     main(
-        model_name=args.model_name,
+        model_name=model_name,
         data_dir=args.data_dir,
         filter_data=args.filter_data,
         beat_aligned=args.beat_aligned,

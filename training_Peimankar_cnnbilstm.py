@@ -28,7 +28,7 @@ from src.utils.helper_fns import (
     get_exclude_sequence_ids, evaluate_macro_f1)
 
 def main(results_path="./results/training"):
-    config = json.load(open("conf/BiXLSTM1.json", "r"))
+    config = json.load(open("conf/peimankarcnnbilstm.json", "r"))
     config["SEQ_LEN"] = int(config["Fs"] * config["seq_dur"])
 
     results_path = os.path.join(results_path, config["model"]["name"])
@@ -101,8 +101,9 @@ def main(results_path="./results/training"):
     ).to(device)
 
     # TensorBoard logging setup
-    run_name = (f"emb{config["model"]["params"]['embedding_dim']}_ks{config["model"]["params"]['conv1d_kernel_size']}_"
-                f"blocks{config["model"]["params"]['num_blocks']}_do{config["model"]["params"]['dropout']}")
+    run_name = (f"cnnc{config["model"]["params"]['cnn_channels']}_ks{config["model"]["params"]['kernel_sizes']}_"
+                f"lstmh{config["model"]["params"]['lstm_hidden_sizes']}_lstml{config["model"]["params"]['lstm_layers']}_"
+                f"do{config["model"]["params"]['dropouts']}")
     log_dir = os.path.join(
         "./logs/runs", run_name + "_" +
         datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -141,6 +142,7 @@ def main(results_path="./results/training"):
             writer.add_scalar("MacroF1/val", macro_f1, epoch)
             print(f"                   Macro F1: {macro_f1:.4f}")
 
+            
             # === Full per-class F1 logging only every N epochs ===
             if (epoch + 1) % config["f1_eval_interval"] == 0 or epoch == config["epochs"] - 1:
                 _ = log_per_class_f1(

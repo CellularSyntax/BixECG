@@ -5,26 +5,32 @@
       "input_dim": 1,
       "num_classes": 4,
       "cnn_channels": [32, 64, 128],
-      "kernel_sizes": [5, 5, 3],
+      "kernel_sizes": [3, 3, 3],
       "lstm_hidden_sizes": [250, 125],
       "lstm_layers": [1, 1],
       "bidirectional": true,
       "dropouts": [0.3, 0.3]
     }
   },
+  "device": "cuda",
   "base_path": "../DATA/QTDataset",
+  "epochs": 25,
   "batch_size": 256,
-  "epochs": 1,
+  "patience": 5,
   "initial_lr": 0.01,
-  "seq_dur": 1.2,
   "Fs": 250,
-  "target_names": ["No Wave", "P-Wave", "QRS Complex", "T-Wave"],
-  "label_smoothing": 0.05,
+  "heart_beats": 1,
+  "seq_dur": 1.2,
+
   "f1_eval_interval": 5,
+  "target_names": ["No Wave", "P-Wave", "QRS Complex", "T-Wave"],
+
   "use_20_percent": true,
+  "label_smoothing": 0.05,
+
   "tolerance_map": {
-      "1": 52,
-      "2": 48,
-      "3": 124
+    "1": 52,
+    "2": 48,
+    "3": 124
   }
 }

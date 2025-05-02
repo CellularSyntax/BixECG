@@ -24,6 +24,7 @@ import torch.nn.utils as nn_utils
 
 # Local imports
 from src.models.models import BiXLSTM, xLSTM
+from src.models.models import get_model
 
 @contextlib.contextmanager
 def redirect_output_to_file(log_path="./logs/build_log.txt"):
@@ -397,38 +398,48 @@ def get_dataloaders(x_train_seq, y_train_seq, x_val_seq, y_val_seq, batch_size, 
         DataLoader(val_ds, batch_size=batch_size, num_workers=num_workers, pin_memory=True)
     )
 
+def get_device(config):
+    device = config["device"]
+    device_options = ["cuda", "cpu"]
+    if device not in device_options:
+        raise ValueError(f"valid device options are {device_options}")
+    if device == "cuda" and not torch.cuda.is_available():
+        ValueError("cuda is not available")
+    return device
+
 def build_model(config):
     with redirect_output_to_file(): # Suppress output from the model initialization as it can be verbose
-        if config.get("bidirectional", False):
-            return BiXLSTM(
-                seq_length=config["SEQ_LEN"],
-                input_dim=1,
-                embedding_dim=config["embedding_dim"],
-                num_blocks=config["num_blocks"],
-                num_heads=config["num_heads"],
-                conv1d_kernel_size=config["conv1d_kernel_size"],
-                proj_factor=config["proj_factor"],
-                use_slstm=True,
-                slstm_at=config["slstm_at"],
-                dropout=config["dropout"],
-                num_classes=config["num_classes"],
-                slstm_backend=config['slstm_backend']
-            ).cuda()
-        else:
-            return xLSTM(
-                seq_length=config["SEQ_LEN"],
-                input_dim=1,
-                embedding_dim=config["embedding_dim"],
-                num_blocks=config["num_blocks"],
-                num_heads=config["num_heads"],
-                conv1d_kernel_size=config["conv1d_kernel_size"],
-                proj_factor=config["proj_factor"],
-                use_slstm=True,
-                slstm_at=config["slstm_at"],
-                dropout=config["dropout"],
-                num_classes=config["num_classes"],
-                slstm_backend=config['slstm_backend']
-            ).cuda()
+        return get_model(config["model"]["name"], **config["model"]["params"])
+#         if config.get("bidirectional", False):
+#             return BiXLSTM(
+#                 seq_length=config["SEQ_LEN"],
+#                 input_dim=1,
+#                 embedding_dim=config["embedding_dim"],
+#                 num_blocks=config["num_blocks"],
+#                 num_heads=config["num_heads"],
+#                 conv1d_kernel_size=config["conv1d_kernel_size"],
+#                 proj_factor=config["proj_factor"],
+#                 use_slstm=True,
+#                 slstm_at=config["slstm_at"],
+#                 dropout=config["dropout"],
+#                 num_classes=config["num_classes"],
+#                 slstm_backend=config['slstm_backend']
+#             ).cuda()
+#         else:
+#             return xLSTM(
+#                 seq_length=config["SEQ_LEN"],
+#                 input_dim=1,
+#                 embedding_dim=config["embedding_dim"],
+#                 num_blocks=config["num_blocks"],
+#                 num_heads=config["num_heads"],
+#                 conv1d_kernel_size=config["conv1d_kernel_size"],
+#                 proj_factor=config["proj_factor"],
+#                 use_slstm=True,
+#                 slstm_at=config["slstm_at"],
+#                 dropout=config["dropout"],
+#                 num_classes=config["num_classes"],
+#                 slstm_backend=config['slstm_backend']
+#             ).cuda()
 
 def train_epoch(model, loader, optimizer, loss_fn, device=None):
     model.train()
@@ -476,8 +487,6 @@ def train_epoch(model, loader, optimizer, loss_fn, device=None):
 
     duration = time.time() - start_time
     print(f"🕒 Train epoch completed in {duration:.2f} seconds")
-    if torch.isnan(total_loss):
-        return total_loss
     return total_loss / len(loader)
 
 def validate(model, loader, loss_fn, device=None):
@@ -501,16 +510,25 @@ def validate(model, loader, loss_fn, device=None):
 
 def write_hparams(writer, config, val_loss=0.0, macrof1=0.0):
     hparams = {
-        'embedding_dim': config['embedding_dim'],
-        'kernel_size': config['conv1d_kernel_size'],
-        'num_blocks': config['num_blocks'],
-        'dropout': config['dropout'],
-        'num_heads': config['num_heads'],
-        'slstm_at': str(config['slstm_at']),
+        **config["model"]["params"],
         'seq_len': config['SEQ_LEN'],
         'batch_size': config['batch_size'],
         'initial_lr': config['initial_lr'],
     }
+    hparams = {
+        k: str(v) for k, v in hparams.items()
+    }
+    # hparams = {
+    #     'embedding_dim': config['embedding_dim'],
+    #     'kernel_size': config['conv1d_kernel_size'],
+    #     'num_blocks': config['num_blocks'],
+    #     'dropout': config['dropout'],
+    #     'num_heads': config['num_heads'],
+    #     'slstm_at': str(config['slstm_at']),
+    #     'seq_len': config['SEQ_LEN'],
+    #     'batch_size': config['batch_size'],
+    #     'initial_lr': config['initial_lr'],
+    # }
     metrics = {
         'val_loss': float(val_loss),        
         'val_f1_macro': float(macrof1),

@@ -20,6 +20,9 @@ def get_model(name: str, **kwargs):
     Raises:
         ValueError: If an unknown model name is provided.
     """
+    
+    ####### getattr(module_model, model_class_name)(**kwargs)
+
     name = name.lower()
     model_registry = {
         "bixlstm": BiXLSTM,

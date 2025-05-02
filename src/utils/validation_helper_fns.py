@@ -23,6 +23,7 @@ from sklearn.metrics import (classification_report, ConfusionMatrixDisplay,
                                  roc_curve, auc, cohen_kappa_score)
 
 from src.utils.helper_fns import (plot_sequence_shaded, build_model, apply_classwise_tolerance_matching)
+from src.utils.helper_fns import get_device
 
 def get_tolerance_map():
     return {
@@ -1149,9 +1150,10 @@ def load_model(model_name):
 
     config = metadata["config"]
 
-    model = build_model(config)
+    device = get_device(config)
+
+    model = build_model(config).to(device)
     model.load_state_dict(torch.load(model_path))
-    model.cuda()
     model.eval()
 
     summary(model)
