@@ -7,7 +7,7 @@ import sys
 import time
 import datetime
 import json
-
+from tqdm import tqdm
 # Third-party libraries
 import numpy as np
 import pandas as pd
@@ -431,7 +431,9 @@ def train_epoch(model, loader, optimizer, loss_fn, device=None):
     if device == None:
         device = next(model.parameters()).device
 
-    for x, y in loader:
+    num_batches = len(loader)
+    tqdm_loader = tqdm(enumerate(loader), total=num_batches)
+    for batch_idx, (x, y) in tqdm_loader:
         x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
 
@@ -460,11 +462,16 @@ def train_epoch(model, loader, optimizer, loss_fn, device=None):
 
         loss = loss_ce
 
-        # Backward pass
-        if not torch.isnan(loss):
-            loss.backward()
-            nn_utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
-            optimizer.step()
+        tqdm_loader.set_postfix(loss=loss.item())
+        tqdm_loader.update()
+
+        if torch.isnan(loss):
+            total_loss = torch.nan
+            break
+
+        loss.backward()
+        nn_utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
+        optimizer.step()
         total_loss += loss.item()
 
     duration = time.time() - start_time
@@ -492,9 +499,9 @@ def validate(model, loader, loss_fn, device=None):
 
 def write_hparams(writer, config, val_loss=0.0, macrof1=0.0):
     # checm if embedding_dim, conv1d_kernel_size, num_blocks, dropout, num_heads, slstm_at are in config; if not, put "n/a" in config
-    for key in ['embedding_dim', 'conv1d_kernel_size', 'num_blocks', 'dropout', 'num_heads', 'slstm_at']:
-        if key not in config:
-            config[key] = "n/a"
+    # for key in ['embedding_dim', 'conv1d_kernel_size', 'num_blocks', 'dropout', 'num_heads', 'slstm_at']:
+    #     if key not in config:
+    #         config[key] = "n/a"
 
     hparams = {
         **config["model"]["params"],
