@@ -46,7 +46,7 @@ enable_mixed_precision = True
 torch.autograd.set_detect_anomaly(False)
 
 
-seed = 42
+seed = 13
 
 def objective(trial: optuna.Trial, config:dict, num_block_slstm_at_choices, results_path):
    
@@ -208,7 +208,7 @@ def init_and_run(trial, config, results_path):
             if "OutOfMemoryError" in str(traceback.format_exc()):
                 # Handle OOM error by reducing batch_size
                 old_batch_size = batch_size
-                batch_size = int(batch_size / 2)
+                batch_size = int(batch_size * config["batch_size_reduction_factor"])
                 config["batch_size"] = batch_size
                 print(f"❗️ OutOfMemoryError - retrying with a new batchsize of {batch_size} (was {old_batch_size})")
                 #print(str(traceback.format_exc()))
@@ -354,7 +354,7 @@ def run(trial,
 
             if epochs_no_improve >= config["patience"]:
                 print("Early stopping triggered based on Macro F1!")
-                break
+                return best_macro_f1
 
         return best_macro_f1
     except KeyboardInterrupt:
@@ -426,7 +426,7 @@ def main(args):
         #return objective(trial, config, x=x_train_filtered, y=y_train_raw, patient_id=patient_id_train, lead=lead_train)
         return objective(trial, config, num_block_slstm_at_dict.values(), results_path)
     
-    study.optimize(objective_wrapper, n_trials=30, timeout=3600)
+    study.optimize(objective_wrapper, n_trials=30)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
