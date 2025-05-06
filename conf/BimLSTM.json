@@ -1,24 +1,21 @@
 {
-  "name": "BiXLSTM1new",
+  "name": "BimLSTM",
   "model": {
-      "name": "bixlstmnew",
+      "name": "bimlstm",
       "params": {
         "input_dim": 1,
         "num_classes": 4,
         "embedding_dim": 32,
-        "num_blocks": 5,
+        "num_blocks": 1,
         "num_heads": 2,
         "conv1d_kernel_size": 51,
-        "proj_factor": 1.0,
-        "slstm_at": [1, 3],
-        "dropout": 0.3,
-        "slstm_backend": "cuda"
+        "dropout": 0.3
       }
     },
     "device": "cuda",
     "base_path": "../DATA/QTDataset",
     "epochs": 20,
-    "batch_size": 256,
+    "batch_size": 512,
     "batch_size_reduction_factor": 0.8,
     "patience": 5,
     "initial_lr": 0.01,

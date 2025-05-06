@@ -48,19 +48,12 @@ torch.autograd.set_detect_anomaly(False)
 
 seed = 13
 
-def objective(trial: optuna.Trial, config:dict, num_block_slstm_at_choices, results_path):
+def objective(trial: optuna.Trial, config:dict, results_path):
    
-    ## list of possible choices must not change -> num_block_slstm_at_choices
-
-    #num_blocks_slstm_at_choice = trial.suggest_categorial("num_blocks_slstm_at", num_block_slstm_at_choices)
-    # # https://github.com/optuna/optuna/issues/2341
-    # # "Some types such as tuple or dictionary are not recommended because there is no guarantee for compatibility across different storage backends (e.g. MySQL and Redis)."
-    # # UserWarning: Choices for a categorical distribution should be a tuple of None, bool, int, float and str for persistent storage but contains [2, 4, 5] which is of type list.
-    # # warning can be ignored.
-    with warnings.catch_warnings(action="ignore"):
-        num_blocks, slstm_at = trial.suggest_categorical("num_blocks_slstm_at", num_block_slstm_at_choices)
-        config["model"]["params"]["num_blocks"] = num_blocks
-        config["model"]["params"]["slstm_at"] = slstm_at
+    
+    #num_blocks = trial.suggest_int("num_blocks", 1, 3)
+    num_blocks = 1
+    config["model"]["params"]["num_blocks"] = num_blocks
     
 
     ## the performance also changes with a different batchsize
@@ -74,11 +67,11 @@ def objective(trial: optuna.Trial, config:dict, num_block_slstm_at_choices, resu
     config["model"]["params"]["dropout"] = dropout
     #embedding_dim = trial.suggest_categorical('embedding_dim', [12, 16, 20, 24, 28, 32, 36, 40, 48, 64, 80, 100])
     config["model"]["params"]["embedding_dim"] = trial.suggest_int('embedding_dim', 12, 100, step=4)
-    config["model"]["params"]["conv1d_kernel_size"] = trial.suggest_categorical('conv1d_kernel_size', [3, 7, 11, 21, 31, 41, 51, 61, 71])
+    config["model"]["params"]["conv1d_kernel_size"] = trial.suggest_categorical('conv1d_kernel_size', [4, 8, 20, 50])
     #conv1d_kernel_size = trial.suggest_int('conv1d_kernel_size', 11, 71, step=10)
 
     #seq_dur = config["seq_dur"]
-    seq_dur = trial.suggest_float("seq_dur", 0.5, 1.5, step=0.25)
+    seq_dur = trial.suggest_float("seq_dur", 0.5, 1.0, step=0.25)
     seq_dur = float("{:.2f}".format(seq_dur))
     config["seq_dur"] = seq_dur
 
@@ -88,7 +81,9 @@ def objective(trial: optuna.Trial, config:dict, num_block_slstm_at_choices, resu
 
     config["model"]["params"]["seq_length"] = int(config["Fs"] * seq_dur)
 
-    
+    print("#############################")
+    print(config)
+    print("#############################")
 
     # Here goes the training loop
     best_val_f1 = init_and_run(trial, config, results_path)
@@ -115,10 +110,6 @@ def init_and_run(trial, config, results_path):
 
     while(batch_size > 8):
         try:
-            print("#############################")
-            print(config)
-            print("#############################")
-            
             random.seed(seed)
             os.environ['PYTHONHASHSEED'] = str(seed)
             np.random.seed(seed)
@@ -167,7 +158,7 @@ def init_and_run(trial, config, results_path):
             class_weights[0] *= 2.0  # Adjust class weights for No Wave class
             class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
 
-            print(f"Class weights: {class_weights}")
+            print(f"Class weights: {class_weights_tensor}")
 
             # Data Loaders
             train_loader, val_loader = get_dataloaders(x_train_seq, y_train_seq, x_val_seq, y_val_seq, batch_size)
@@ -207,7 +198,7 @@ def init_and_run(trial, config, results_path):
             )
 
         except Exception as e:
-            if "OutOfMemoryError" in str(traceback.format_exc()) or "out of memory" in str(traceback.format_exc()) or "CUBLAS_STATUS_ALLOC_FAILED" in str(traceback.format_exc()):
+            if "OutOfMemoryError" in str(traceback.format_exc()) or "out of memory" in str(traceback.format_exc()):
                 # Handle OOM error by reducing batch_size
                 old_batch_size = batch_size
                 batch_size = int(batch_size * config["batch_size_reduction_factor"])
@@ -243,7 +234,7 @@ def run(trial,
     
     # TensorBoard logging setup
     run_name = (f"seqlen{config['SEQ_LEN']}_emb{config['model']['params']['embedding_dim']}_ks{config['model']['params']['conv1d_kernel_size']}_"
-                f"blocks{config['model']['params']['num_blocks']}_slstmat{config['model']['params']['slstm_at']}_do{config['model']['params']['dropout']}")
+                f"blocks{config['model']['params']['num_blocks']}_do{config['model']['params']['dropout']}")
     run_name = run_name.replace(" ", "")
     log_dir = os.path.join(
         "./logs/runs", run_name + "_" +
@@ -383,9 +374,9 @@ def run(trial,
 
 
 def main(args):
-    config = json.load(open("conf/BiXLSTM1.json", "r"))
+    config = json.load(open("conf/BimLSTM.json", "r"))
 
-    results_path = os.path.join("results", "hpo", f'{config["name"]}_no_mp')
+    results_path = os.path.join("results", "hpo", config["name"])
 
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -412,22 +403,10 @@ def main(args):
 
     def objective_wrapper(trial):
 
-        num_block_slstm_at_dict = {}
-        for num_blocks in range(2, 5):
-            max_positions = list(range(num_blocks))
-            #possible_slstm_at_options = [()]
-            possible_slstm_at_options = []
-            for k in range(1, min(4, num_blocks+1)):  # e.g. 1 to 3 sLSTM layers
-                possible_slstm_at_options.extend(itertools.combinations(max_positions, k))
-            possible_slstm_at_options = [*map(list, possible_slstm_at_options)]
-            for possible_positions in possible_slstm_at_options:
-                key = f"{num_blocks}_{"".join([str(at) for at in possible_positions])}"
-                val = [num_blocks, possible_positions]
-                num_block_slstm_at_dict[key] = val
         
         #config["SEQ_LEN"] = int(config["Fs"] * config["seq_dur"])
         #return objective(trial, config, x=x_train_filtered, y=y_train_raw, patient_id=patient_id_train, lead=lead_train)
-        return objective(trial, config, num_block_slstm_at_dict.values(), results_path)
+        return objective(trial, config, results_path)
     
     study.optimize(objective_wrapper, n_trials=30)
 

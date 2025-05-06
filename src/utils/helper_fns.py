@@ -440,7 +440,7 @@ def train_epoch(model, loader, optimizer, loss_fn, device=None):
         logits = model(x)
 
         # Optional: Clamp logits to avoid overflow (can still keep this)
-        logits = torch.clamp(logits, min=-15, max=15)
+        #logits = torch.clamp(logits, min=-15, max=15)
 
         # Cross-entropy loss
         loss_ce = loss_fn(logits.permute(0, 2, 1), y).mean()
@@ -462,7 +462,7 @@ def train_epoch(model, loader, optimizer, loss_fn, device=None):
 
         loss = loss_ce
 
-        tqdm_loader.set_postfix(loss=loss.item())
+        tqdm_loader.set_postfix(loss=f"{loss.item():.3f}")
         tqdm_loader.update()
 
         if torch.isnan(loss):
@@ -470,10 +470,10 @@ def train_epoch(model, loader, optimizer, loss_fn, device=None):
             break
 
         loss.backward()
-        nn_utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
+        nn_utils.clip_grad_norm_(model.parameters(), max_norm=2.0)
         optimizer.step()
         total_loss += loss.item()
-
+    tqdm_loader.close()
     duration = time.time() - start_time
     print(f"🕒 Train epoch completed in {duration:.2f} seconds")
     return total_loss / len(loader)

@@ -1,4 +1,4 @@
-from .bixecg import BiXLSTM, xLSTM
+from .bixecg import BiXLSTM, BiXLSTM2, FXLSTM, xLSTM, BimLSTM
 from .jimenez_cnn import JimenezCNN1D
 from .peimankar_cnn_bilstm import PeimankarCnnBilstm
 
@@ -26,6 +26,9 @@ def get_model(name: str, **kwargs):
     name = name.lower()
     model_registry = {
         "bixlstm": BiXLSTM,
+        "bixlstmnew": BiXLSTM2,
+        "bimlstm": BimLSTM,
+        "fxlstm": FXLSTM,
         "xlstm": xLSTM,
         "jimenezcnn1d": JimenezCNN1D,
         "peimankarcnnbilstm": PeimankarCnnBilstm,

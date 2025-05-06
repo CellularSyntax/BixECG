@@ -1,18 +1,15 @@
 {
-  "name": "BiXLSTM1new",
+  "name": "FxLSTM",
   "model": {
-      "name": "bixlstmnew",
+      "name": "fxlstm",
       "params": {
         "input_dim": 1,
         "num_classes": 4,
         "embedding_dim": 32,
-        "num_blocks": 5,
+        "num_blocks": 1,
         "num_heads": 2,
         "conv1d_kernel_size": 51,
-        "proj_factor": 1.0,
-        "slstm_at": [1, 3],
-        "dropout": 0.3,
-        "slstm_backend": "cuda"
+        "dropout": 0.3
       }
     },
     "device": "cuda",
