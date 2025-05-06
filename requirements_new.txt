@@ -43,6 +43,7 @@ ninja==1.11.1.4
 numpy==2.2.5
 omegaconf==2.3.0
 opt_einsum==3.4.0
+optuna==4.3.0
 packaging==25.0
 pandas==2.2.3
 parso==0.8.4
