@@ -14,7 +14,7 @@ class BiXLSTMHPO(BaseHPO):
     
         
         num_block_slstm_at_dict = {}
-        for num_blocks in range(2, 6):
+        for num_blocks in range(2, 7):
             max_positions = list(range(num_blocks))
             #possible_slstm_at_options = [()]
             possible_slstm_at_options = []
@@ -56,7 +56,7 @@ class BiXLSTMHPO(BaseHPO):
         #conv1d_kernel_size = trial.suggest_int('conv1d_kernel_size', 11, 71, step=10)
 
         #seq_dur = config["seq_dur"]
-        seq_dur = trial.suggest_float("seq_dur", 0.5, 1.5, step=0.25)
+        seq_dur = trial.suggest_float("seq_dur", 0.5, 2.5, step=0.25)
         seq_dur = float("{:.2f}".format(seq_dur))
         config["seq_dur"] = seq_dur
 
@@ -74,5 +74,5 @@ class BiXLSTMHPO(BaseHPO):
 
     def get_run_name(self, config: dict) -> str:
         return (f"seqlen{config['SEQ_LEN']}_emb{config['model']['params']['embedding_dim']}_ks{config['model']['params']['conv1d_kernel_size']}_"
-                    f"blocks{config['model']['params']['num_blocks']}_slstmat{config['model']['params']['slstm_at']}_do{config['model']['params']['dropout']}")
+                    f"blocks{config['model']['params']['num_blocks']}_slstmat{config['model']['params']['slstm_at']}_do{config['model']['params']['dropout']}_lr{config['initial_lr']}")
     
