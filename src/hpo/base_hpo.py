@@ -372,12 +372,22 @@ class BaseHPO:
             
             summary_csv = os.path.join(results_path, f"summary.csv")
             sep = ";"
+            fw_pass_time = 0.0
+            gpu_name = "N/A"
+            try:
+                x_single = next(iter(train_loader))[0][0:1].to(device)
+                fw_start = time.time()
+                model(x_single)
+                fw_pass_time = time.time() - fw_start
+                gpu_name = torch.cuda.get_device_name()
+            except Exception as e:
+                pass
             if not os.path.isfile(summary_csv):
                 with open(summary_csv, "w") as f:
-                    line = sep.join(["best_macrof1", "config", "total_params", "total_params_MB", "stopped_due_to"]) + "\n"
+                    line = sep.join(["best_macrof1", "config", "total_params", "total_params_MB", "stopped_due_to", "fw_time_1sample_batch", "gpu"]) + "\n"
                     f.write(line)
             with open(summary_csv, "a") as f:
-                line = f"{best_macro_f1:.4f}{sep}{run_name}{sep}{model_summary.total_params}{sep}{(model_summary.total_param_bytes / 1024 / 1024):.2f}{sep}{stop_reason.replace(";", ",.")}\n"
+                line = f"{best_macro_f1:.4f}{sep}{run_name}{sep}{model_summary.total_params}{sep}{(model_summary.total_param_bytes / 1024 / 1024):.2f}{sep}{stop_reason.replace(';', ',.')}{sep}{fw_pass_time:.3f}{sep}{gpu_name}\n"
                 f.write(line)
             # # Load the best model for evaluation
             # model.load_state_dict(torch.load(best_model_path))
