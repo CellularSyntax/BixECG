@@ -62,6 +62,7 @@ def main(results_path="./res"):
 
     # === Build model ===
     model = build_model(config).to(device)
+    summary(model)
     optimizer = torch.optim.Adam(model.parameters(), lr=config["initial_lr"])
 
     scheduler = WarmupCosineScheduler(

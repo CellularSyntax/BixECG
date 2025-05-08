@@ -17,6 +17,14 @@ from PIL import Image
 from scipy.signal import butter, filtfilt
 from sklearn.metrics import f1_score
 from sklearn.utils.class_weight import compute_class_weight
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import FunctionTransformer, RobustScaler
+from scipy.stats.mstats import winsorize
+from scipy.signal import resample
+import wfdb
+import ast
+
 from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.transforms import ToTensor
@@ -386,7 +394,7 @@ def split_train_val_by_patient(x_seq, y_seq, meta_seq, train_fraction=0.8, rando
     return x_train, y_train, x_val, y_val
 
 def filter_ecg(x, config):
-    x_filt = apply_bandpass_filter(x, lowcut=0.5, highcut=50, fs=config["Fs"])
+    x_filt = apply_bandpass_filter(x, lowcut=0.5, highcut=40, fs=config["Fs"])
     return x_filt
 
 def compute_class_weights(y_train_seq, num_classes):
@@ -711,3 +719,217 @@ def save_model_with_metadata(model, config, results_path, best_macro_f1, epoch,
 
     print(f"Saved new best model: {model_filename} and metadata")
     return model_filename
+
+def extract_all_ecg_features(preds, ecg_signal, Fs=250):
+    """
+    Extract ECG morphology and HRV features from predicted delineation and ECG signal.
+    
+    Args:
+        preds: 1D numpy array of predicted labels (0=bg, 1=P, 2=QRS, 3=T)
+        ecg_signal: 1D numpy array of raw ECG values (same length as preds)
+        Fs: Sampling frequency in Hz
+
+    Returns:
+        Dictionary with extracted ECG features
+    """
+    ms_per_sample = 1000 / Fs
+    waves = {1: 'P', 2: 'QRS', 3: 'T'}
+    boundaries = {'P': [], 'QRS': [], 'T': []}
+    current_label = None
+    start_idx = None
+
+    for i, label in enumerate(preds):
+        if label != current_label:
+            if current_label in waves and start_idx is not None:
+                boundaries[waves[current_label]].append((start_idx, i - 1))
+            if label in waves:
+                start_idx = i
+            else:
+                start_idx = None
+            current_label = label
+    if current_label in waves and start_idx is not None:
+        boundaries[waves[current_label]].append((start_idx, len(preds) - 1))
+
+    features = {
+        'PR_intervals': [], 'QRS_durations': [], 'QT_intervals': [],
+        'P_durations': [], 'T_durations': [], 'ST_segments': [],
+        'P_amplitudes': [], 'QRS_amplitudes': [], 'T_amplitudes': [],
+        'QRS_to_P_amp_ratios': [],
+        'RR_intervals': [], 'HR': [], 'SDNN': [], 'RMSSD': [], 'NN50': [], 'pNN50': []
+    }
+
+    qrs_onsets = [start for start, _ in boundaries['QRS']]
+
+    for p_start, p_end in boundaries['P']:
+        qrs_after_p = [q_start for q_start in qrs_onsets if q_start > p_end]
+        if qrs_after_p:
+            pr_interval = (qrs_after_p[0] - p_start) * ms_per_sample
+            features['PR_intervals'].append(pr_interval)
+
+    for q_start, q_end in boundaries['QRS']:
+        duration = (q_end - q_start + 1) * ms_per_sample
+        features['QRS_durations'].append(duration)
+
+        t_candidates = [t for t in boundaries['T'] if t[0] > q_end]
+        if t_candidates:
+            t_start, t_end = t_candidates[0]
+            qt_interval = (t_end - q_start + 1) * ms_per_sample
+            features['QT_intervals'].append(qt_interval)
+            st_segment = (t_start - q_end - 1) * ms_per_sample
+            features['ST_segments'].append(st_segment)
+
+    for p_start, p_end in boundaries['P']:
+        duration = (p_end - p_start + 1) * ms_per_sample
+        features['P_durations'].append(duration)
+
+    for t_start, t_end in boundaries['T']:
+        duration = (t_end - t_start + 1) * ms_per_sample
+        features['T_durations'].append(duration)
+
+    for p_start, p_end in boundaries['P']:
+        segment = ecg_signal[p_start:p_end + 1]
+        if len(segment) > 0:
+            amp = np.max(segment) - np.min(segment)
+            features['P_amplitudes'].append(amp)
+
+    for q_start, q_end in boundaries['QRS']:
+        segment = ecg_signal[q_start:q_end + 1]
+        if len(segment) > 0:
+            amp = np.max(segment) - np.min(segment)
+            features['QRS_amplitudes'].append(amp)
+
+    for t_start, t_end in boundaries['T']:
+        segment = ecg_signal[t_start:t_end + 1]
+        if len(segment) > 0:
+            amp = np.max(segment) - np.min(segment)
+            features['T_amplitudes'].append(amp)
+
+    min_len = min(len(features['P_amplitudes']), len(features['QRS_amplitudes']))
+    for i in range(min_len):
+        p_amp = features['P_amplitudes'][i]
+        qrs_amp = features['QRS_amplitudes'][i]
+        if p_amp > 0:
+            ratio = qrs_amp / p_amp
+            if 0 < ratio < 50:
+                features['QRS_to_P_amp_ratios'].append(ratio)
+
+    # --- HRV features ---
+    if len(qrs_onsets) >= 2:
+        rr_intervals = np.diff(qrs_onsets) * ms_per_sample  # in ms
+        features['RR_intervals'].extend(rr_intervals.tolist())
+
+        if len(rr_intervals) > 0:
+            features['HR'].append(60000 / np.mean(rr_intervals))  # bpm
+            features['SDNN'].append(np.std(rr_intervals, ddof=1))  # ms
+
+        if len(rr_intervals) > 1:
+            successive_diff = np.diff(rr_intervals)
+            features['RMSSD'].append(np.sqrt(np.mean(successive_diff ** 2)))  # ms
+
+            nn50 = np.sum(np.abs(successive_diff) > 50)
+            pnn50 = 100 * nn50 / len(successive_diff)
+            features['NN50'].append(nn50)
+            features['pNN50'].append(pnn50)
+
+    return features
+
+def build_feature_pipeline(feature_df):
+    # ---------- Feature columns ----------
+    feature_cols = [col for col in feature_df.columns if col.startswith("mean_")]
+    
+    # ---------- Config ----------
+    skewed_features = ['QRS_to_P_amp_ratios']  # Add more if needed
+    log_cols = [col for col in feature_cols if any(s in col for s in skewed_features)]
+    nonlog_cols = [col for col in feature_cols if col not in log_cols]
+
+    # ---------- Winsorization ----------
+    def winsorize_column(col):
+        return winsorize(col, limits=[0.01, 0.01])
+
+    def apply_winsorization(X):
+        X = np.asarray(X)  # ✅ This fixes the KeyError
+        return np.column_stack([winsorize_column(X[:, i]) for i in range(X.shape[1])])
+
+    def log_transform(X):
+        return np.log1p(X)
+
+    # ---------- Pipelines ----------
+    nonlog_pipeline = Pipeline([
+        ("winsorize", FunctionTransformer(apply_winsorization, validate=False)),
+        ("scale", RobustScaler())
+    ])
+
+    log_pipeline = Pipeline([
+        ("winsorize", FunctionTransformer(apply_winsorization, validate=False)),
+        ("log", FunctionTransformer(log_transform, validate=False)),
+        ("scale", RobustScaler())
+    ])
+
+    # ---------- Combine ----------
+    full_pipeline = ColumnTransformer([
+        ("log", log_pipeline, log_cols),
+        ("nonlog", nonlog_pipeline, nonlog_cols)
+    ])
+
+    return full_pipeline, feature_cols
+
+def load_ptbxl_data(
+    path="../DATA/ptb-xl",
+    sampling_rate=500,
+    target_fs=250,
+    leads='all',  # 'all' or list of indices, e.g., [1, 5]
+    use_superclass=True
+):
+    """
+    Load PTB-XL ECG data with labels.
+
+    Args:
+        path: Path to PTB-XL dataset directory (must include CSVs and WFDB files)
+        sampling_rate: 100 or 500 (must match subfolder structure)
+        target_fs: resample signals to this (e.g., 250)
+        leads: 'all' or list of indices to select from 12 leads
+        use_superclass: if True, assign diagnostic_superclass from SCP codes
+
+    Returns:
+        X: np.array of shape (N, L, T) if multilead, or (N, T) if single-lead
+        y: list of labels (multi-label format)
+        metadata: corresponding dataframe
+    """
+    print(f"📦 Loading PTB-XL at {sampling_rate} Hz...")
+
+    # Load metadata
+    df = pd.read_csv(f"{path}/ptbxl_database.csv", index_col='ecg_id')
+    df.scp_codes = df.scp_codes.apply(ast.literal_eval)
+
+    # Load SCP code aggregation
+    agg_df = pd.read_csv(f"{path}/scp_statements.csv", index_col=0)
+    agg_df = agg_df[agg_df.diagnostic == 1]
+
+    def aggregate_diagnostic(y_dic):
+        return list({agg_df.loc[k].diagnostic_class for k in y_dic if k in agg_df.index})
+
+    if use_superclass:
+        df['diagnostic_superclass'] = df.scp_codes.apply(aggregate_diagnostic)
+        y = df.diagnostic_superclass
+    else:
+        y = df.scp_codes
+
+    # Load raw ECGs
+    file_col = "filename_hr" if sampling_rate == 500 else "filename_lr"
+    records = df[file_col].values
+    x_list = []
+
+    for f in records:
+        record = wfdb.rdsamp(f"{path}/{f}")
+        signal = record[0].T  # shape (12, T)
+        if sampling_rate != target_fs:
+            signal = resample(signal, int(signal.shape[1] * target_fs / sampling_rate), axis=1)
+        if leads != 'all':
+            signal = signal[leads, :]
+        x_list.append(signal)
+
+    X = np.stack(x_list)  # (N, L, T) or (N, T) if L = 1
+    y = y.tolist()
+
+    print(f"✅ Loaded {len(X)} samples at {target_fs} Hz with {X.shape[1]} leads each.")
+    return X, y, df
