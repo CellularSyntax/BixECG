@@ -144,7 +144,7 @@ class BiXLSTM(nn.Module): # with shared weights
     def forward(self, x):
         x = self.input_proj(x)  # (B, T, D)
 
-        x_forward = self.xlstm_stack(x)  # (B, T, D)
+        x_forward = self.xlstm_stack(x.clone())  # (B, T, D)
 
         x_backward = self.xlstm_stack(torch.flip(x, dims=[1]))  # reverse along time
         x_backward = torch.flip(x_backward, dims=[1])           # unflip back
