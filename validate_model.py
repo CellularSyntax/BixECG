@@ -59,6 +59,7 @@ def main(model_name, data_dir="../DATA/ludb", filter_data=True, beat_aligned=Tru
     # Normalize
     print("🔄 Normalizing sequences...")
     x_seq = np.array([z_normalize(seq) for seq in x_seq])
+    print(f"normalized min = {np.min(x_seq)}, max = {np.max(x_seq)}")
     
     if use_subset_for_testing:
         print(f"🔄 Subsampling to {n_sub_samples} sequences...")
@@ -78,7 +79,7 @@ def main(model_name, data_dir="../DATA/ludb", filter_data=True, beat_aligned=Tru
     )
 
     # ========== Full Model Evaluation ==========
-    save_dir_full = f"{results_dir}/{model_name}/{db_name}"
+    save_dir_full = f"{model_name}/{db_name}"
     full_info, plots_data = evluate_on_db(
         model=model,
         test_loader=loader,
