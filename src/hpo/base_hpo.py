@@ -46,13 +46,13 @@ enable_mixed_precision = False
 torch.autograd.set_detect_anomaly(False)
 
 
-seed = 13
+seed = 42
 
 class BaseHPO:
     def __init__(self):
         pass
 
-    def objective(self, trial: optuna.Trial, config:dict, results_path: str):
+    def objective(self, trial: optuna.Trial, config_path: str, results_path: str):
         raise NotImplementedError("This method should be overridden by subclasses") 
     
     
@@ -80,6 +80,7 @@ class BaseHPO:
 
                 # TensorBoard logging setup
                 run_name = self.get_run_name(config)
+                
                 start_timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                 run_name = f"bs{config["batch_size"]}_{run_name}_{start_timestamp}"
                 run_name = run_name.replace(" ", "")
@@ -87,6 +88,8 @@ class BaseHPO:
                     "./logs/runs", run_name + "_" +
                     start_timestamp
                 )
+
+                print(f"run dir: {run_name}")
                 writer = SummaryWriter(log_dir)
 
                 # Data Loading and Preprocessing
@@ -119,6 +122,7 @@ class BaseHPO:
 
                 # Normalize
                 x_train_seq = np.array([z_normalize(seq) for seq in x_train_seq])
+                print(f"normalized min = {np.min(x_train_seq)}, max = {np.max(x_train_seq)}")
 
                 x_train_seq, y_train_seq, x_val_seq, y_val_seq = split_train_val_by_patient(
                     x_seq=x_train_seq,
@@ -319,8 +323,7 @@ class BaseHPO:
 
                 # Handle pruning based on the intermediate value.
                 if trial.should_prune():
-                    stop_reason = "Trial pruned"
-                    raise optuna.exceptions.TrialPruned()
+                    raise optuna.exceptions.TrialPruned("Trial pruned")
 
                 # === Early stopping based on macro F1 ===
                 if macro_f1 > best_macro_f1:
@@ -395,7 +398,7 @@ class BaseHPO:
             # writer.close()
 
     def main(self, config_path):
-        config = json.load(open(config_path, "r"))
+        config = json.load(open(config_path))
 
         results_path = os.path.join("results", "hpo2", f'{config["name"]}')
         os.makedirs(results_path, exist_ok=True)
@@ -426,9 +429,9 @@ class BaseHPO:
         def objective_wrapper(trial):
             #config["SEQ_LEN"] = int(config["Fs"] * config["seq_dur"])
             #return objective(trial, config, x=x_train_filtered, y=y_train_raw, patient_id=patient_id_train, lead=lead_train)
-            return self.objective(trial, config, results_path)
+            return self.objective(trial, config_path, results_path)
         
-        study.optimize(objective_wrapper, n_trials=30)
+        study.optimize(objective_wrapper, n_trials=60)
 
         pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
         complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])

@@ -7,7 +7,7 @@ import src.hpo as module_hpo
 
 def launch_hpo(model_name):
     script_map = {
-        #"peimankar": "src.hpo.hpo_peimankarcnnbilstm",
+        "peimankar": ["PeimankarHPO", "conf/peimankarcnnbilstm.json"],
         "bixlstm": ["BiXLSTMHPO", "conf/BiXLSTM1.json"],
         #"jimenez": "src.hpo.hpo_jimenezcnn1d",
         #"liue": "src.hpo.hpo_liuecnnbilstm",
