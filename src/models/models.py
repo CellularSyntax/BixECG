@@ -1,6 +1,8 @@
 from .bixecg import BiXLSTM, xLSTM
 from .jimenez_cnn import JimenezCNN1D
 from .peimankar_cnn_bilstm import PeimankarCnnBilstm
+from .liu_cnn_bilstm import LiuCNNBilstm
+from .BiXLSTMClassifierFusion import BiXLSTMClassifierFusion
 
 def get_model(name: str, **kwargs):
     """
@@ -26,9 +28,10 @@ def get_model(name: str, **kwargs):
     name = name.lower()
     model_registry = {
         "bixlstm": BiXLSTM,
-        "xlstm": xLSTM,
+        "liuecnnbilstm": LiuCNNBilstm,
         "jimenezcnn1d": JimenezCNN1D,
         "peimankarcnnbilstm": PeimankarCnnBilstm,
+        "bixlstmfusion": BiXLSTMClassifierFusion
     }
 
     if name not in model_registry:

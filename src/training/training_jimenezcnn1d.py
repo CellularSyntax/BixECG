@@ -14,7 +14,6 @@ from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.tensorboard import SummaryWriter
 from torchinfo import summary
 import json
-import math
 from src.utils.scheduler import WarmupCosineScheduler
 
 from src.utils.helper_fns import (
@@ -28,6 +27,8 @@ from src.utils.helper_fns import (
 
 def main(results_path="./res"):
     config = json.load(open("conf/jimenezcnn1d.json", "r"))
+    # pretty print the config
+    print(json.dumps(config, indent=4))
     config["SEQ_LEN"] = int(config["Fs"] * config["seq_dur"])
 
     device = get_device(config)

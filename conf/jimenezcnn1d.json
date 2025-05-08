@@ -1,10 +1,16 @@
 {
     "name": "jimenezcnn1d",
-    "input_dim": 1,
-    "base_channels": 32,
-    "num_classes": 4,
+    "model": {
+      "name": "jimenezcnn1d",
+      "params": {
+        "input_dim": 1,
+        "base_channels": 32,
+        "num_classes": 4
+        }
+    },
+    "device": "cuda",
     "base_path": "../DATA/QTDataset",
-    "epochs": 1,
+    "epochs": 32,
     "batch_size": 256,
     "patience": 5,
     "initial_lr": 0.01,

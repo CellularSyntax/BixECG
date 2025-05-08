@@ -27,7 +27,7 @@ from src.utils.helper_fns import (
     split_train_val_by_patient, get_exclude_sequence_ids,
     evaluate_macro_f1)
 
-def main(results_path="./results/training"):
+def main(results_path="./res"):
     config = json.load(open("conf/BiXLSTM1.json", "r"))
     config["SEQ_LEN"] = int(config["Fs"] * config["seq_dur"])
 
@@ -157,7 +157,7 @@ def main(results_path="./results/training"):
             if macro_f1 > best_macro_f1:
                 best_macro_f1 = macro_f1
                 epochs_no_improve = 0
-                best_model_name = save_model_with_metadata(
+                best_model_path = save_model_with_metadata(
                         model=model,
                         config=config,
                         results_path=results_path,

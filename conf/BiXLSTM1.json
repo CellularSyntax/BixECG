@@ -3,7 +3,7 @@
     "name": "BiXLSTM1",
     
     "base_path": "../DATA/QTDataset",
-    "epochs": 1,
+    "epochs": 32,
     "batch_size": 256,
     "patience": 5,
     "initial_lr": 0.01,

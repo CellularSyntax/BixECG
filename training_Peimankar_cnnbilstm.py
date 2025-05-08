@@ -27,7 +27,7 @@ from src.utils.helper_fns import (
     split_train_val_by_patient, get_device,
     get_exclude_sequence_ids, evaluate_macro_f1)
 
-def main(results_path="./results/training"):
+def main(results_path="./res"):
     config = json.load(open("conf/peimankarcnnbilstm.json", "r"))
     config["SEQ_LEN"] = int(config["Fs"] * config["seq_dur"])
 

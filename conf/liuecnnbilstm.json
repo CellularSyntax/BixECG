@@ -1,16 +1,22 @@
 {
-    "name": "liucnnbilstm",
-  "input_dim": 1,
-  "num_classes": 4,
-  "cnn_channels": [32, 64, 128],
-  "kernel_sizes": [5, 5, 3],
-  "pool_sizes": [2, 2, 2],
-  "lstm_hidden_size": 128,
-  "lstm_layers": 1,
-  "dropout": 0.3,
+  "name": "liucnnbilstm",
+  "model": {
+    "name": "liuecnnbilstm",
+    "params": {
+      "input_dim": 1,
+      "num_classes": 4,
+      "cnn_channels": [32, 64, 128],
+      "kernel_sizes": [5, 5, 3],
+      "pool_sizes": [2, 2, 2],
+      "lstm_hidden_size": 128,
+      "lstm_layers": 1,
+      "dropout": 0.3
+    }
+  },
+  "device": "cuda",
   "base_path": "../DATA/QTDataset",
   "batch_size": 256,
-  "epochs": 1,
+  "epochs": 32,
   "initial_lr": 0.01,
   "seq_dur": 1.2,
   "heart_beats": 1,

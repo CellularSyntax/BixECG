@@ -1164,29 +1164,48 @@ def load_model(model_name):
     return model, config, Fs, model_path
 
 def print_ascii_logo():
-    logo = r"""                                                                                                                                             
-                                                                                         .=*                                 
-                                                                                         +*-                                 
-            @@@@@@@@   @@@            @@@@@@@@@    @@@@@@@@     @@@@@@@                 %+#=                                 
-            @@@@@@@@@  @@@            @@@@@@@@@  @@@@@@@@@   @@@@@@@@@@@@               -= ==                                
-            @@@   @@@      @@@@   @@@ @@@        @@@        @@@                         -- =:                                
-            @@@@@@@@@  @@@   @@@@@@   @@@@@@@@@ @@@         @@@                         -+  =                                
-            @@@    @@@ @@@    @@@@    @@@       @@@         @@@    @@@@@@              *=   =.                               
-            @@@    @@@ @@@   @@@@@@   @@@        @@@         @@@      @@@              +=   :=                               
-            @@@@@@@@@  @@@  @@@  @@@  @@@@@@@@@   @@@@@@@@@@  @@@@@@@@@@@              ==    +:                              
-                                                                                       =-    :=--:                           
-                                                                                 -     =+        --                          
-                                               =.                               -++*   -+        ++                          
-      *+=+                                 ::.--+:.-                           == +=   *.         ==                         
-    .---@+=:...::.: ...:: ..::          --:         =--                        =: --  .*           --      -:-           + *-
-                              -- ..:::..+             --   -:::..             =-   =- -+            --+-..: =--::: .::.:+@-- 
-                                                       +-:--    *:.:.- #-....-:    +- =+             =:                      
-                                                                      :-           +: :+                                     
-                                                                                    - -                                      
-                                                                                    -#-                                      
-                                                                                    .=:                                      
+    RESET = "\033[0m"
+    WHITE = "\033[97m"
+    GRAY = "\033[90m"
+
+    # Define a palette of ANSI colors to randomly choose from (excluding blue)
+    COLOR_PALETTE = [
+        "\033[91m",  # Red
+        "\033[92m",  # Green
+        "\033[93m",  # Yellow
+        "\033[95m",  # Magenta
+        "\033[96m",  # Cyan
+        "\033[90m",  # Bright Black (Gray)
+    ]
+
+    raw_logo = r"""                                                                                                                                             
+@@@@@@@@   @@@            @@@@@@@@@    @@@@@@@@     @@@@@@@            +-                                 
+@@@@@@@@@  @@@            @@@@@@@@@  @@@@@@@@@   @@@@@@@@@@@@         -= =                                 
+@@@   @@@       @@@  @@@  @@@        @@@        @@@                   -- =:                                 
+@@@@@@@@@  @@@   @@@@@@   @@@@@@@@@ @@@         @@@                   -+  =                                 
+@@@    @@@ @@@    @@@@    @@@       @@@         @@@    @@@@@@         *=   =.                               
+@@@    @@@ @@@   @@@@@@   @@@        @@@         @@@      @@@         +=   :=                               
+@@@@@@@@@  @@@  @@@  @@@  @@@@@@@@@   @@@@@@@@@@  @@@@@@@@@@@   #:    ==    +:                              
+                                                               =  @   .*     =:                
+--#+=:-.@:=.:*..+:-:*:..+#_*.:-=.#.--+:.=--.*:--:::.*:.:.- # =*   =-  -+      =.   .-@.:*=--:+#-- 
+                                                                   +- =+        =:+                      
+                                                                    +::+                                     
+                                                                     -#-                                      
 """
-    print(logo)
+    colored_logo = ''.join([
+        f"{GRAY}@{RESET}" if c == '@' else f"{random.choice(COLOR_PALETTE)}{c}{RESET}"
+        for c in raw_logo
+    ])
+
+    print(colored_logo)
+
+    print("""
+The copyrights of this software are owned by Medical University of Vienna. Please refer to the LICENSE and
+README.md files for licensing instructions.The source code can be found at the following GitHub repository:
+https://github.com/CellularSyntax/BixECG
+""")
+    print("---")
+
 
 if __name__ == "__main__":
     print_ascii_logo()
