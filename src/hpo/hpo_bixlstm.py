@@ -23,7 +23,7 @@ class BiXLSTMHPO(BaseHPO):
             possible_slstm_at_options = []
             #for k in range(1, min(4, num_blocks+1)):  # e.g. 1 to 3 sLSTM layers
             #for k in range(0, min(3, num_blocks+1)):  # e.g. 0 to 2 sLSTM layers
-            for k in range(0, min(4, num_blocks+1)):  # e.g. 0 to 2 sLSTM layers
+            for k in range(1, min(5, num_blocks+1)):  # e.g. 0 to 2 sLSTM layers
                 possible_slstm_at_options.extend(itertools.combinations(max_positions, k))
             possible_slstm_at_options = [*map(list, possible_slstm_at_options)]
             for possible_positions in possible_slstm_at_options:
@@ -56,9 +56,9 @@ class BiXLSTMHPO(BaseHPO):
         dropout = float("{:.2f}".format(dropout))
         config["model"]["params"]["dropout"] = dropout
         #embedding_dim = trial.suggest_categorical('embedding_dim', [12, 16, 20, 24, 28, 32, 36, 40, 48, 64, 80, 100])
-        config["model"]["params"]["embedding_dim"] = trial.suggest_int('embedding_dim', 12, 100, step=4)
+        config["model"]["params"]["embedding_dim"] = trial.suggest_int('embedding_dim', 8, 40, step=4)
         #config["model"]["params"]["conv1d_kernel_size"] = trial.suggest_categorical('conv1d_kernel_size', [3, 7, 11, 21, 31, 41, 51, 61, 71])
-        config["model"]["params"]["conv1d_kernel_size"] = trial.suggest_categorical('conv1d_kernel_size', [11, 21, 31, 41, 51, 61, 71])
+        config["model"]["params"]["conv1d_kernel_size"] = trial.suggest_categorical('conv1d_kernel_size', [11, 21, 31, 41, 51, 61])
         #conv1d_kernel_size = trial.suggest_int('conv1d_kernel_size', 11, 71, step=10)
 
         seq_dur = config["seq_dur"]
@@ -69,6 +69,8 @@ class BiXLSTMHPO(BaseHPO):
         #config["model"]["params"]["sequence_length"] = trial.suggest_categorical('sequence_length', [100, 200, 300])
         
         config["SEQ_LEN"] = int(config["Fs"] * seq_dur)
+
+        print(f"seq_dur: {seq_dur}, Fs: {config['Fs']}, SEQ_LEN: {config['SEQ_LEN']}")
 
         config["model"]["params"]["seq_length"] = int(config["Fs"] * seq_dur)
 
