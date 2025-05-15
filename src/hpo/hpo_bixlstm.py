@@ -8,12 +8,12 @@ from src.hpo.base_hpo import BaseHPO
 
 
 class BiXLSTMHPO(BaseHPO):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, multi_objective: bool = True, seed: int = 42, hpo_mode: bool = True):
+        super().__init__(multi_objective, seed, hpo_mode=hpo_mode)
+        
     
     def objective(self, trial: optuna.Trial, config_path: str, results_path: str):
         config = json.load(open(config_path))
-        
         num_block_slstm_at_dict = {}
         #for num_blocks in range(2, 7):
         #for num_blocks in range(1, 5):
@@ -23,7 +23,7 @@ class BiXLSTMHPO(BaseHPO):
             possible_slstm_at_options = []
             #for k in range(1, min(4, num_blocks+1)):  # e.g. 1 to 3 sLSTM layers
             #for k in range(0, min(3, num_blocks+1)):  # e.g. 0 to 2 sLSTM layers
-            for k in range(1, min(5, num_blocks+1)):  # e.g. 0 to 2 sLSTM layers
+            for k in range(0, min(5, num_blocks+1)):  # e.g. 0 to 2 sLSTM layers
                 possible_slstm_at_options.extend(itertools.combinations(max_positions, k))
             possible_slstm_at_options = [*map(list, possible_slstm_at_options)]
             for possible_positions in possible_slstm_at_options:
@@ -40,11 +40,19 @@ class BiXLSTMHPO(BaseHPO):
         # # "Some types such as tuple or dictionary are not recommended because there is no guarantee for compatibility across different storage backends (e.g. MySQL and Redis)."
         # # UserWarning: Choices for a categorical distribution should be a tuple of None, bool, int, float and str for persistent storage but contains [2, 4, 5] which is of type list.
         # # warning can be ignored.
-        with warnings.catch_warnings(action="ignore"):
-            num_blocks, slstm_at = trial.suggest_categorical("num_blocks_slstm_at", num_block_slstm_at_choices)
-            config["model"]["params"]["num_blocks"] = num_blocks
-            config["model"]["params"]["slstm_at"] = slstm_at
-        
+        # with warnings.catch_warnings(action="ignore"):
+        #     num_blocks, slstm_at = trial.suggest_categorical("num_blocks_slstm_at", num_block_slstm_at_choices)
+        #     config["model"]["params"]["num_blocks"] = num_blocks
+        #     config["model"]["params"]["slstm_at"] = slstm_at
+
+
+        config_id = trial.suggest_categorical("num_blocks_slstm_at", range(len(num_block_slstm_at_choices)))
+        num_blocks, slstm_at = list(num_block_slstm_at_choices)[config_id]
+        config["model"]["params"]["num_blocks"] = num_blocks
+        config["model"]["params"]["slstm_at"] = slstm_at
+        trial.set_user_attr("num_blocks_slstm_at", f"{num_blocks}_{str(slstm_at).replace(" ", "")}")
+        trial.set_user_attr("block_config", f"{num_blocks}_{''.join('s' if i in slstm_at else 'm' for i in range(num_blocks))}")
+
 
         ## the performance also changes with a different batchsize
         ## could use max batch_size suggestion and reduce if needed
@@ -60,6 +68,8 @@ class BiXLSTMHPO(BaseHPO):
         #config["model"]["params"]["conv1d_kernel_size"] = trial.suggest_categorical('conv1d_kernel_size', [3, 7, 11, 21, 31, 41, 51, 61, 71])
         config["model"]["params"]["conv1d_kernel_size"] = trial.suggest_categorical('conv1d_kernel_size', [11, 21, 31, 41, 51, 61])
         #conv1d_kernel_size = trial.suggest_int('conv1d_kernel_size', 11, 71, step=10)
+
+        config["model"]["params"]["num_heads"] = trial.suggest_categorical('num_heads', [2, 4])
 
         seq_dur = config["seq_dur"]
         #seq_dur = trial.suggest_float("seq_dur", 0.5, 2.0, step=0.25)
@@ -82,5 +92,5 @@ class BiXLSTMHPO(BaseHPO):
 
     def get_run_name(self, config: dict) -> str:
         return (f"seqlen{config['SEQ_LEN']}_emb{config['model']['params']['embedding_dim']}_ks{config['model']['params']['conv1d_kernel_size']}_"
-                    f"blocks{config['model']['params']['num_blocks']}_slstmat{config['model']['params']['slstm_at']}_do{config['model']['params']['dropout']}_lr{config['initial_lr']}")
+                    f"blocks{config['model']['params']['num_blocks']}_nh{config['model']['params']['num_heads']}_slstmat{config['model']['params']['slstm_at']}_do{config['model']['params']['dropout']}_lr{config['initial_lr']}")
     

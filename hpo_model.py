@@ -5,10 +5,12 @@ import sys
 #from src.utils.validation_helper_fns import print_ascii_logo
 import src.hpo as module_hpo
 
-def launch_hpo(model_name):
+def launch_hpo(model_name, multiobj):
     script_map = {
         "peimankar": ["PeimankarHPO", "conf/peimankarcnnbilstm.json"],
         "bixlstm": ["BiXLSTMHPO", "conf/BiXLSTM1.json"],
+        #"sfxlstm": ["SFXLSTMHPO", "conf/SFXLSTM.json"],
+        #"bisfxlstm": ["BiSFXLSTMHPO", "conf/BiSFXLSTM.json"],
         #"jimenez": "src.hpo.hpo_jimenezcnn1d",
         #"liue": "src.hpo.hpo_liuecnnbilstm",
     }
@@ -21,7 +23,7 @@ def launch_hpo(model_name):
     module_to_run, config_path = script_map[model_key]
     print(f"🚀 Launching hyper parameter optimization for model: {model_name}...")
 
-    hpo = getattr(module_hpo, module_to_run)()
+    hpo = getattr(module_hpo, module_to_run)(multi_objective=multiobj)
     hpo.main(config_path)
 
 def parse_args():
@@ -32,12 +34,14 @@ def parse_args():
     #                     help="Model name to train. Options: Peimankar, BiXLSTM, Jimenez, Liue")
     parser.add_argument("--model", type=str, required=True,
                         help="Model name to train. Options: Peimankar, BiXLSTM, Jimenez, Liue")
+    parser.add_argument('--multiobj', default=True, action=argparse.BooleanOptionalAction,
+                        help="Start multi-objective optimization (max: macrof1, min: num_params). Default: True")
     return parser.parse_args()
 
 def main():
     #print_ascii_logo()
     args = parse_args()
-    launch_hpo(args.model)
+    launch_hpo(args.model, args.multiobj)
 
 if __name__ == "__main__":
     main()

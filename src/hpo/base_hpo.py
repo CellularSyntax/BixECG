@@ -19,7 +19,7 @@ import json
 import os
 import warnings
 import random
-
+import joblib
 import time
 
 from src.utils.scheduler import WarmupCosineScheduler
@@ -46,11 +46,12 @@ enable_mixed_precision = False
 torch.autograd.set_detect_anomaly(False)
 
 
-seed = 42
 
 class BaseHPO:
-    def __init__(self):
-        pass
+    def __init__(self, multi_objective: bool, seed: int, hpo_mode: bool = True):
+        self.multi_objective = multi_objective
+        self.seed = seed
+        self.hpo_mode = hpo_mode
 
     def objective(self, trial: optuna.Trial, config_path: str, results_path: str):
         raise NotImplementedError("This method should be overridden by subclasses") 
@@ -60,7 +61,7 @@ class BaseHPO:
         raise NotImplementedError("This method should be overridden by subclasses")
     
     
-    def init_and_run(self, trial, config, results_path):
+    def init_and_run(self, trial, config, results_path, beat_aligned=True):
         device = get_device(config)
         
         
@@ -96,6 +97,7 @@ class BaseHPO:
                 x_train_raw, y_train_raw, patient_id_train, lead_train, _, _, _, _ = load_ecg_data(config)
                 x_train_filtered = filter_ecg(x_train_raw, config)
                 
+                seed = self.seed
                 random.seed(seed)
                 os.environ['PYTHONHASHSEED'] = str(seed)
                 np.random.seed(seed)
@@ -107,7 +109,7 @@ class BaseHPO:
                 x_train_seq, y_train_seq, train_meta_seq = extract_beat_aligned_sequences(
                     ecg_signal=x_train_filtered, label_signal=y_train_raw, fs=config["Fs"],
                     beats_per_seq=config["heart_beats"], seq_len_seconds=config["seq_dur"],
-                    patient_signal=patient_id_train, lead_signal=lead_train, beat_aligned=False
+                    patient_signal=patient_id_train, lead_signal=lead_train, beat_aligned=beat_aligned
                 )
                 
                 exclude_ids = get_exclude_sequence_ids(config)
@@ -239,6 +241,7 @@ class BaseHPO:
         batch_x, batch_y = batch_x.to(device), batch_y.to(device)
         input_size = batch_x.size()
         model_summary = summary(model, verbose=1, input_size=input_size, col_names=["input_size", "output_size", "mult_adds", "num_params"], device=device)
+        n_params = model_summary.total_params
         with open(f"{model_dir}/model_summary.txt", "w") as f:
             f.write(str(model_summary))
         with open(f"{model_dir}/model_summary_single_batch.txt", "w") as f:
@@ -273,7 +276,8 @@ class BaseHPO:
                 train_loss = train_epoch(model, train_loader, optimizer, loss_fn)
                 print(f"Epoch {epoch+1}/{config['epochs']} - Train Loss: {train_loss:.4f}")
                 if math.isnan(train_loss):
-                    trial.report(train_loss, epoch)
+                    if trial is not None and not self.multi_objective:
+                        trial.report(train_loss, epoch)
                     os.makedirs(model_dir, exist_ok=True)
                     metadata = {
                         "epoch": epoch + 1,
@@ -284,7 +288,10 @@ class BaseHPO:
                     with open(os.path.join(model_dir, f"NAN_epoch{epoch+1}_lr{current_lr}.json"), "w") as f:
                         json.dump(metadata, f, indent=4)
 
-                    return train_loss
+                    if self.multi_objective:
+                        return train_loss, n_params
+                    else:
+                        return train_loss
                 writer.add_scalar("Loss/train", train_loss, epoch)
 
                 # === Validation ===
@@ -310,6 +317,16 @@ class BaseHPO:
                 writer.add_scalar("MacroF1/val", macro_f1, epoch)
                 print(f"                   Macro F1: {macro_f1:.4f}")
 
+
+                metrics_file_path = os.path.join(model_dir, "metrics.csv")
+                if not os.path.isfile(metrics_file_path):
+                    with open(metrics_file_path, "w") as f:
+                        line = "epoch;macro_f1;train_loss;val_loss;learning_rate\n"
+                        f.write(line)
+                with open(metrics_file_path, "a") as f:
+                    f.write(f"{epoch+1};{macro_f1};{train_loss};{val_loss};{current_lr}\n")
+                
+
                 # === Full per-class F1 logging only every N epochs ===
                 if (epoch + 1) % config["f1_eval_interval"] == 0 or epoch == config["epochs"] - 1:
                     _ = log_per_class_f1(
@@ -318,11 +335,11 @@ class BaseHPO:
 
                 # Scheduler step
                 scheduler.step()
-
-                trial.report(macro_f1, epoch)
+                if trial is not None and not self.multi_objective:
+                    trial.report(macro_f1, epoch)
 
                 # Handle pruning based on the intermediate value.
-                if trial.should_prune():
+                if trial is not None and not self.multi_objective and trial.should_prune():
                     raise optuna.exceptions.TrialPruned("Trial pruned")
 
                 # === Early stopping based on macro F1 ===
@@ -354,17 +371,29 @@ class BaseHPO:
                     print("Early stopping triggered based on Macro F1!")
                     stop_reason = "Early stopping"
                     # TODO: raise optuna.exceptions.TrialPruned() ?
-                    return best_macro_f1
+                    if self.multi_objective:
+                        return best_macro_f1, n_params
+                    else:
+                        return best_macro_f1
+                    
+                
 
             stop_reason = "Max epochs reached"
-            return best_macro_f1
+            if self.multi_objective:
+                return best_macro_f1, n_params
+            else:
+                return best_macro_f1
         except KeyboardInterrupt:
             print("\n\n=== KeyboardInterrupt detected! Gracefully exiting... ===\n")
             stop_reason = "KeyboardInterrupt"
             if macro_f1 == 0:
                 # not even a single epoch was completed
-                trial.set_user_attr("reason", "keyboard interrupt")
-            return best_macro_f1
+                if trial is not None:
+                    trial.set_user_attr("reason", "keyboard interrupt")
+            if self.multi_objective:
+                return train_loss, n_params
+            else:
+                return train_loss
         except Exception as e:
             stop_reason = f"Exception ({str(e)})"
             raise e
@@ -400,9 +429,12 @@ class BaseHPO:
     def main(self, config_path):
         config = json.load(open(config_path))
 
-        results_path = os.path.join("results", "hpo2", f'{config["name"]}')
+        hpo_name = "hpo_multi_qrs_aligned"
+
+        results_path = os.path.join("results", hpo_name, f'{config["name"]}')
         os.makedirs(results_path, exist_ok=True)
 
+        seed = self.seed
         random.seed(seed)
         os.environ['PYTHONHASHSEED'] = str(seed)
         np.random.seed(seed)
@@ -418,13 +450,32 @@ class BaseHPO:
 
         # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        sampler = optuna.samplers.TPESampler(seed=seed)
+        if not self.hpo_mode:
+            result = self.objective(None, config_path, results_path)
+            print(f"Best result without HPO: {result}")
+            return result
+        
+        pruner = optuna.pruners.MedianPruner(n_startup_trials=10, n_warmup_steps=10)
 
-        study = optuna.create_study(
-            sampler=sampler,
-            direction="maximize",
-            pruner=optuna.pruners.MedianPruner(n_startup_trials=10, n_warmup_steps=5)
-        )
+        if self.multi_objective:
+            #sampler = optuna.samplers.NSGAIISampler(seed=seed)
+            sampler = optuna.samplers.TPESampler(seed=seed)
+            study = optuna.create_study(
+                sampler=sampler,
+                directions=["maximize", "minimize"],
+                pruner=pruner,
+                storage=f"sqlite:///{os.path.join(results_path, "db.sqlite3")}",  # Specify the storage URL here.
+                study_name=hpo_name
+            )
+        else:
+            sampler = optuna.samplers.TPESampler(seed=seed)
+            study = optuna.create_study(
+                sampler=sampler,
+                direction="maximize",
+                pruner=pruner,
+                storage=f"sqlite:///{os.path.join(results_path, "db.sqlite3")}",  # Specify the storage URL here.
+                study_name=hpo_name
+            )
 
         def objective_wrapper(trial):
             #config["SEQ_LEN"] = int(config["Fs"] * config["seq_dur"])
@@ -450,3 +501,5 @@ class BaseHPO:
 
 
         print("  Value: ", trial.value)
+
+        joblib.dump(study, os.path.join(results_path, "study.pkl"))
