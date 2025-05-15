@@ -24,6 +24,7 @@ from scipy.stats.mstats import winsorize
 from scipy.signal import resample
 import wfdb
 import ast
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.tensorboard import SummaryWriter
@@ -164,7 +165,7 @@ def extract_beat_aligned_sequences(
 
     if beat_aligned:
         # Find p-wave start indices (transitions to label==1)
-        is_p_wave = label_signal == 1
+        is_p_wave = label_signal == 2
         transitions = np.diff(np.concatenate([[0], is_p_wave.astype(int)])) == 1
         p_wave_starts = np.where(transitions)[0]
 
@@ -256,7 +257,7 @@ def extract_sequences_simple(
     y_seqs = []
 
     if beat_aligned:
-        is_p_wave = label_signal == 1
+        is_p_wave = label_signal == 2
         transitions = np.diff(np.concatenate([[0], is_p_wave.astype(int)])) == 1
         p_wave_starts = np.where(transitions)[0]
 
