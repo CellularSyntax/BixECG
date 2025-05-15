@@ -137,7 +137,7 @@ def plot_bland_altman_overlay_colored(overlay_means_dict, overlay_diffs_dict, ti
     plt.savefig(save_path_prefix + ".svg")
     plt.close()
 
-def analyze_bland_altman_and_correlation_per_sequence(y_true_seq, y_pred_seq, target_names, Fs, save_dir):
+def analyze_bland_altman_and_correlation_per_sequence(y_true_seq, y_pred_seq, target_names, Fs, save_dir, report_only=False):
     bland_corr_results = {}
     matching_failures = {}
     sample_to_ms = lambda x: (x / Fs) * 1000
@@ -201,11 +201,12 @@ def analyze_bland_altman_and_correlation_per_sequence(y_true_seq, y_pred_seq, ta
             overlay_onset_means_dict[class_name] = list((pred_ms + true_ms) / 2)
             overlay_onset_diffs_dict[class_name] = list(diffs)
 
-            plot_bland_altman_ms(
-                pred_ms, true_ms,
-                title=f"Bland-Altman (Onsets) - {class_name}",
-                save_path_prefix=os.path.join(save_dir, f"bland_altman_onsets_{class_name}")
-            )
+            if not report_only:
+                plot_bland_altman_ms(
+                    pred_ms, true_ms,
+                    title=f"Bland-Altman (Onsets) - {class_name}",
+                    save_path_prefix=os.path.join(save_dir, f"bland_altman_onsets_{class_name}")
+                )
         else:
             failures["onset"] = "Too few onsets"
 
@@ -237,30 +238,32 @@ def analyze_bland_altman_and_correlation_per_sequence(y_true_seq, y_pred_seq, ta
             overlay_offset_means_dict[class_name] = list((pred_ms + true_ms) / 2)
             overlay_offset_diffs_dict[class_name] = list(diffs)
 
-            plot_bland_altman_ms(
-                pred_ms, true_ms,
-                title=f"Bland-Altman (Offsets) - {class_name}",
-                save_path_prefix=os.path.join(save_dir, f"bland_altman_offsets_{class_name}")
-            )
+            if not report_only:
+                plot_bland_altman_ms(
+                    pred_ms, true_ms,
+                    title=f"Bland-Altman (Offsets) - {class_name}",
+                    save_path_prefix=os.path.join(save_dir, f"bland_altman_offsets_{class_name}")
+                )
         else:
             failures["offset"] = "Too few offsets"
 
         bland_corr_results[class_name] = class_results
         matching_failures[class_name] = failures
 
-    if overlay_onset_means_dict:
-        plot_bland_altman_overlay_colored(
-            overlay_onset_means_dict, overlay_onset_diffs_dict,
-            title="Overlay Bland-Altman (Onsets)",
-            save_path_prefix=os.path.join(save_dir, "overlay_bland_altman_onsets")
-        )
+    if not report_only:
+        if overlay_onset_means_dict:
+            plot_bland_altman_overlay_colored(
+                overlay_onset_means_dict, overlay_onset_diffs_dict,
+                title="Overlay Bland-Altman (Onsets)",
+                save_path_prefix=os.path.join(save_dir, "overlay_bland_altman_onsets")
+            )
 
-    if overlay_offset_means_dict:
-        plot_bland_altman_overlay_colored(
-            overlay_offset_means_dict, overlay_offset_diffs_dict,
-            title="Overlay Bland-Altman (Offsets)",
-            save_path_prefix=os.path.join(save_dir, "overlay_bland_altman_offsets")
-        )
+        if overlay_offset_means_dict:
+            plot_bland_altman_overlay_colored(
+                overlay_offset_means_dict, overlay_offset_diffs_dict,
+                title="Overlay Bland-Altman (Offsets)",
+                save_path_prefix=os.path.join(save_dir, "overlay_bland_altman_offsets")
+            )
 
     return bland_corr_results, matching_failures
 
@@ -888,7 +891,7 @@ def run_inference(model, test_loader, ignore_index=-100):
             all_logits.append(logits.cpu().numpy())
     return np.concatenate(all_preds), np.concatenate(all_trues), np.concatenate(all_logits, axis=0)
 
-def evaluate_strict(y_true, y_pred, target_names, save_dir, ignore_index=-100):
+def evaluate_strict(y_true, y_pred, target_names, save_dir, ignore_index=-100, report_only=False):
     print("\n📊 Strict Evaluation:")
     labels = list(range(len(target_names)))
     mask = y_true != ignore_index
@@ -902,22 +905,23 @@ def evaluate_strict(y_true, y_pred, target_names, save_dir, ignore_index=-100):
     print(json.dumps(report, indent=4))
     print(f"📈 Cohen's Kappa (Strict): {kappa:.4f}")
 
-    # Confusion Matrix
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ConfusionMatrixDisplay.from_predictions(
-        y_true[mask], y_pred[mask], labels=labels, 
-        display_labels=target_names, normalize='true', cmap='Blues', ax=ax
-    )
-    ax.grid(False)
-    ax.set_title("Strict Confusion Matrix (Normalized)")
-    fig.tight_layout()
-    fig.savefig(os.path.join(save_dir, "confusion_matrix_strict.png"))
-    fig.savefig(os.path.join(save_dir, "confusion_matrix_strict.svg"))
-    plt.close(fig)
+    if not report_only:
+        # Confusion Matrix
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ConfusionMatrixDisplay.from_predictions(
+            y_true[mask], y_pred[mask], labels=labels, 
+            display_labels=target_names, normalize='true', cmap='Blues', ax=ax
+        )
+        ax.grid(False)
+        ax.set_title("Strict Confusion Matrix (Normalized)")
+        fig.tight_layout()
+        fig.savefig(os.path.join(save_dir, "confusion_matrix_strict.png"))
+        fig.savefig(os.path.join(save_dir, "confusion_matrix_strict.svg"))
+        plt.close(fig)
 
     return {"classification_report": report, "cohen_kappa": kappa}
 
-def generate_roc_and_temperature_scaling(model, logits_all, y_true, save_dir, target_names, ignore_index=-100):
+def generate_roc_and_temperature_scaling(model, logits_all, y_true, save_dir, target_names, ignore_index=-100, report_only=False):
     print("\n🌡️ Fitting temperature scaling and generating ROC curves...")
     device = next(model.parameters()).device
     labels = list(range(len(target_names)))
@@ -937,26 +941,29 @@ def generate_roc_and_temperature_scaling(model, logits_all, y_true, save_dir, ta
     y_score_valid_scaled = valid_logits_tensor / optimal_temperature
     probs = torch.softmax(y_score_valid_scaled, dim=1).cpu().numpy()
 
-    fig, ax = plt.subplots(figsize=(8, 6))
+    fig, ax = (None, None) if report_only else plt.subplots(figsize=(8, 6))
+
     auc_values = []
     for i, class_name in enumerate(target_names):
         fpr, tpr, _ = roc_curve(y_true_bin[:, i], probs[:, i])
         roc_auc = auc(fpr, tpr)
         auc_values.append(roc_auc)
-        ax.plot(fpr, tpr, label=f"{class_name} (AUC = {roc_auc:.2f})")
-
+        if not report_only:
+            ax.plot(fpr, tpr, label=f"{class_name} (AUC = {roc_auc:.2f})")
     macro_auc = np.mean(auc_values)
-    print(f"📈 Macro AUC (Strict, Temp Scaled): {macro_auc:.4f}")
 
-    ax.plot([0, 1], [0, 1], 'k--')
-    ax.set_title("ROC Curves (Strict Evaluation, Temp Scaled)")
-    ax.set_xlabel("False Positive Rate")
-    ax.set_ylabel("True Positive Rate")
-    ax.legend(loc="lower right")
-    fig.tight_layout()
-    fig.savefig(os.path.join(save_dir, "roc_curves_strict.png"))
-    fig.savefig(os.path.join(save_dir, "roc_curves_strict.svg"))
-    plt.close(fig)
+    print(f"📈 Macro AUC (Strict, Temp Scaled): {macro_auc:.4f}")
+    if not report_only:
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ax.plot([0, 1], [0, 1], 'k--')
+        ax.set_title("ROC Curves (Strict Evaluation, Temp Scaled)")
+        ax.set_xlabel("False Positive Rate")
+        ax.set_ylabel("True Positive Rate")
+        ax.legend(loc="lower right")
+        fig.tight_layout()
+        fig.savefig(os.path.join(save_dir, "roc_curves_strict.png"))
+        fig.savefig(os.path.join(save_dir, "roc_curves_strict.svg"))
+        plt.close(fig)
 
     return probs, optimal_temperature, macro_auc
 
@@ -990,7 +997,8 @@ def save_random_shaded_sequences(x_test_tensor, y_test_tensor, y_pred_seq, save_
 
 def evluate_on_db(model, test_loader, x_test_tensor, y_test_tensor,
                      SEQ_LEN, save_dir, Fs=250, target_names=None, tolerance_map=None,
-                     ignore_index=-100, N_examples=20, loader=None, model_path=None):
+                     ignore_index=-100, N_examples=20, loader=None, model_path=None,
+                     report_only=False):
     print("\n🚀 Starting evaluation...")
     os.makedirs(save_dir, exist_ok=True)
     print(f"📂 Results will be saved to: {save_dir}")
@@ -1004,21 +1012,24 @@ def evluate_on_db(model, test_loader, x_test_tensor, y_test_tensor,
     y_pred_seq = majority_vote_smoothing(y_pred_seq, window_size=30)
 
     # 2. Strict Evaluation
-    strict_stats = evaluate_strict(y_true, y_pred, target_names, save_dir, ignore_index)
+    strict_stats = evaluate_strict(y_true, y_pred, target_names, save_dir, ignore_index, report_only=report_only)
     stats.update({"strict_classification_report": strict_stats["classification_report"],
                   "cohen_kappa_strict": strict_stats["cohen_kappa"]})
 
     # 3. ROC + Temperature Scaling
     probs, temp, macro_auc = generate_roc_and_temperature_scaling(
-        model, logits_all, y_true, save_dir, target_names, ignore_index
+        model, logits_all, y_true, save_dir, target_names, ignore_index,
+        report_only=report_only
     )
     stats.update({"temperature_scaling_T": temp, "strict_macro_auc": macro_auc})
 
     # 4. Calibration
     ece, accs, confs, bins, ece_ci = compute_ece_bootstrapped(y_true[y_true != ignore_index], probs, n_bins=20, n_bootstrap=200)
     stats["expected_calibration_error_overall"] = {"ece": ece, "95%_CI": [ece_ci[0], ece_ci[1]]}
-    plot_reliability_diagram(accs, confs, bins, ece_value=ece, ci=ece_ci,
-                              save_path=os.path.join(save_dir, "reliability_diagram_overall"))
+    if not report_only:
+        plot_reliability_diagram(accs, confs, bins, ece_value=ece, ci=ece_ci,
+                                save_path=os.path.join(save_dir, "reliability_diagram_overall"))
+        
 
     # 5. Uncertainty
     subset_indices = np.random.choice(len(x_test_tensor), size=20, replace=False)
@@ -1035,14 +1046,16 @@ def evluate_on_db(model, test_loader, x_test_tensor, y_test_tensor,
     probs_valid = subset_probs.reshape(-1, subset_probs.shape[-1])[subset_y.flatten() != ignore_index]
     y_true_valid = subset_y.flatten()[subset_y.flatten() != ignore_index].cpu().numpy()
 
-    plot_entropy_vs_error_rate(y_true_valid, probs_valid, entropy_valid,
-                               save_path_prefix=os.path.join(save_dir, "entropy_vs_error_rate"))
-    plot_entropy_vs_confidence(probs_valid, entropy_valid,
-                               save_path_prefix=os.path.join(save_dir, "entropy_vs_confidence"))
+    if not report_only:
+        plot_entropy_vs_error_rate(y_true_valid, probs_valid, entropy_valid,
+                                save_path_prefix=os.path.join(save_dir, "entropy_vs_error_rate"))
+        plot_entropy_vs_confidence(probs_valid, entropy_valid,
+                                save_path_prefix=os.path.join(save_dir, "entropy_vs_confidence"))
 
     # 6. Bland-Altman and Correlation
     bland_corr_results, matching_failures = analyze_bland_altman_and_correlation_per_sequence(
-        y_true_seq=y_true_seq, y_pred_seq=y_pred_seq, target_names=target_names, Fs=Fs, save_dir=save_dir
+        y_true_seq=y_true_seq, y_pred_seq=y_pred_seq, target_names=target_names, Fs=Fs, save_dir=save_dir,
+        report_only=report_only
     )
     stats.update({"bland_altman_correlation": bland_corr_results,
                   "bland_altman_matching_failures": matching_failures})
@@ -1067,44 +1080,45 @@ def evluate_on_db(model, test_loader, x_test_tensor, y_test_tensor,
                       "cohen_kappa_tolerance": tol_kappa})
         
         # Tolerance Confusion Matrix
-        labels = list(range(len(target_names)))
-        fig_cm_tol, ax_cm_tol = plt.subplots(figsize=(8, 6))
-        ConfusionMatrixDisplay.from_predictions(
-            y_true_flat[valid_mask], y_pred_tol_flat[valid_mask], labels=labels,
-            display_labels=target_names, normalize='true', cmap='Blues', ax=ax_cm_tol
-        )
-        ax_cm_tol.grid(False)
-        ax_cm_tol.set_title("Tolerance-aware Confusion Matrix (Normalized)")
-        fig_cm_tol.tight_layout()
-        fig_cm_tol.savefig(os.path.join(save_dir, "confusion_matrix_tolerance.png"))
-        fig_cm_tol.savefig(os.path.join(save_dir, "confusion_matrix_tolerance.svg"))
-        plt.close(fig_cm_tol)
-        
-        # Tolerance ROC Curve
-        y_true_bin_tol = label_binarize(y_true_flat[valid_mask], classes=labels)
-        fig_roc_tol, ax_roc_tol = plt.subplots(figsize=(8, 6))
-        auc_values_tol = []
+        if not report_only:
+            labels = list(range(len(target_names)))
+            fig_cm_tol, ax_cm_tol = plt.subplots(figsize=(8, 6))
+            ConfusionMatrixDisplay.from_predictions(
+                y_true_flat[valid_mask], y_pred_tol_flat[valid_mask], labels=labels,
+                display_labels=target_names, normalize='true', cmap='Blues', ax=ax_cm_tol
+            )
+            ax_cm_tol.grid(False)
+            ax_cm_tol.set_title("Tolerance-aware Confusion Matrix (Normalized)")
+            fig_cm_tol.tight_layout()
+            fig_cm_tol.savefig(os.path.join(save_dir, "confusion_matrix_tolerance.png"))
+            fig_cm_tol.savefig(os.path.join(save_dir, "confusion_matrix_tolerance.svg"))
+            plt.close(fig_cm_tol)
+            
+            # Tolerance ROC Curve
+            y_true_bin_tol = label_binarize(y_true_flat[valid_mask], classes=labels)
+            fig_roc_tol, ax_roc_tol = plt.subplots(figsize=(8, 6))
+            auc_values_tol = []
 
-        for i, class_name in enumerate(target_names):
-            fpr, tpr, _ = roc_curve(y_true_bin_tol[:, i], probs[:, i])
-            roc_auc = auc(fpr, tpr)
-            auc_values_tol.append(roc_auc)
-            ax_roc_tol.plot(fpr, tpr, label=f"{class_name} (AUC = {roc_auc:.2f})")
+            for i, class_name in enumerate(target_names):
+                fpr, tpr, _ = roc_curve(y_true_bin_tol[:, i], probs[:, i])
+                roc_auc = auc(fpr, tpr)
+                auc_values_tol.append(roc_auc)
+                ax_roc_tol.plot(fpr, tpr, label=f"{class_name} (AUC = {roc_auc:.2f})")
 
-        ax_roc_tol.plot([0, 1], [0, 1], 'k--')
-        ax_roc_tol.set_title("ROC Curves (Tolerance-aware, Temp Scaled)")
-        ax_roc_tol.set_xlabel("False Positive Rate")
-        ax_roc_tol.set_ylabel("True Positive Rate")
-        ax_roc_tol.legend(loc="lower right")
-        fig_roc_tol.savefig(os.path.join(save_dir, "roc_curves_tolerance.png"))
-        fig_roc_tol.savefig(os.path.join(save_dir, "roc_curves_tolerance.svg"))
-        plt.close(fig_roc_tol)
+            ax_roc_tol.plot([0, 1], [0, 1], 'k--')
+            ax_roc_tol.set_title("ROC Curves (Tolerance-aware, Temp Scaled)")
+            ax_roc_tol.set_xlabel("False Positive Rate")
+            ax_roc_tol.set_ylabel("True Positive Rate")
+            ax_roc_tol.legend(loc="lower right")
+            fig_roc_tol.savefig(os.path.join(save_dir, "roc_curves_tolerance.png"))
+            fig_roc_tol.savefig(os.path.join(save_dir, "roc_curves_tolerance.svg"))
+            plt.close(fig_roc_tol)
 
-    # 8. Explainability
-    explain_model_predictions(model, x_test_tensor, y_test_tensor, save_dir, target_names, SEQ_LEN, fs=Fs)
-
-    # 9. Save random shaded sequences
-    save_random_shaded_sequences(x_test_tensor, y_test_tensor, y_pred_seq, save_dir, SEQ_LEN, N_examples)
+    if not report_only:
+        # 8. Explainability
+        explain_model_predictions(model, x_test_tensor, y_test_tensor, save_dir, target_names, SEQ_LEN, fs=Fs)
+        # 9. Save random shaded sequences
+        save_random_shaded_sequences(x_test_tensor, y_test_tensor, y_pred_seq, save_dir, SEQ_LEN, N_examples)
 
     print("\n✅ Evaluation finished successfully!")
 
@@ -1114,6 +1128,9 @@ def evluate_on_db(model, test_loader, x_test_tensor, y_test_tensor,
         "evaluation_metrics": stats
     }
 
+    if report_only:
+        return full_info
+    
     # 10. Save plots data for later combined plot generation
 
     plots_data = {}

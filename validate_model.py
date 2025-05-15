@@ -19,8 +19,9 @@ from src.utils.validation_helper_fns import (
     evluate_on_db, load_model, get_tolerance_map
 )
 
-def main(model_name, data_dir="../DATA/ludb", filter_data=True, beat_aligned=True, use_subset_for_testing=False, n_sub_samples=1000, seed=42, results_dir="./results", db_name="ludb"):
+def main(model_name, data_dir="../DATA/ludb", filter_data=True, beat_aligned=True, use_subset_for_testing=False, n_sub_samples=1000, seed=42, results_dir="./results", db_name="ludb", report_only=False):
     print("✨ Start processing...")
+    print(beat_aligned)
 
     # Load model
     print("🔍 Loading model...")
@@ -47,7 +48,7 @@ def main(model_name, data_dir="../DATA/ludb", filter_data=True, beat_aligned=Tru
         fs=Fs,
         beats_per_seq=config.get('heart_beats', 1),
         seq_len_seconds=config.get('seq_dur', 1.2),
-        pad_label=-100, beat_aligned=True
+        pad_label=-100, beat_aligned=beat_aligned
     )
     
     # Apply bandpass filter
@@ -72,34 +73,55 @@ def main(model_name, data_dir="../DATA/ludb", filter_data=True, beat_aligned=Tru
     dataset = TensorDataset(x, y)
     loader = DataLoader(
         dataset,
-        batch_size=config["batch_size"],
+        #batch_size=config["batch_size"],
+        batch_size=128,
         shuffle=False,
         num_workers=4,
         pin_memory=True
     )
 
     # ========== Full Model Evaluation ==========
-    save_dir_full = f"{model_name}/{db_name}"
-    full_info, plots_data = evluate_on_db(
-        model=model,
-        test_loader=loader,
-        x_test_tensor=x,
-        y_test_tensor=y,
-        SEQ_LEN=config['SEQ_LEN'],
-        save_dir=save_dir_full,
-        Fs=Fs,
-        target_names=config['target_names'],
-        tolerance_map=get_tolerance_map(),
-        loader=loader,
-        model_path=model_path,
-    )
+    aligned = "aligned" if beat_aligned else "fixed"
+    save_dir_full = os.path.join(model_name, db_name, aligned)
+
+    if report_only:
+        full_info = evluate_on_db(
+            model=model,
+            test_loader=loader,
+            x_test_tensor=x,
+            y_test_tensor=y,
+            SEQ_LEN=config['SEQ_LEN'],
+            save_dir=save_dir_full,
+            Fs=Fs,
+            target_names=config['target_names'],
+            tolerance_map=get_tolerance_map(),
+            loader=loader,
+            model_path=model_path,
+            report_only=True,
+        )
+    else:
+        full_info, plots_data = evluate_on_db(
+            model=model,
+            test_loader=loader,
+            x_test_tensor=x,
+            y_test_tensor=y,
+            SEQ_LEN=config['SEQ_LEN'],
+            save_dir=save_dir_full,
+            Fs=Fs,
+            target_names=config['target_names'],
+            tolerance_map=get_tolerance_map(),
+            loader=loader,
+            model_path=model_path,
+            report_only=False,
+        )
+        # Save all collected plot data
+        with open(os.path.join(save_dir_full, "plots_data.pkl"), "wb") as f:
+            pickle.dump(plots_data, f)
 
     with open(os.path.join(save_dir_full, "model_info.json"), "w") as f:
         json.dump(full_info, f, indent=4)
 
-    # Save all collected plot data
-    with open(os.path.join(save_dir_full, "plots_data.pkl"), "wb") as f:
-        pickle.dump(plots_data, f)
+    
 
 
 def parse_args():
@@ -113,8 +135,10 @@ def parse_args():
                         help="Path to the ECG database directory.")
     parser.add_argument("--filter_data", action="store_true",
                         help="Apply preprocessing filters (e.g., bandpass) to the ECG data before evaluation.")
-    parser.add_argument("--beat_aligned", action="store_true",
+    parser.add_argument("--beat_aligned", dest="beat_aligned", default=True, action="store_true",
                         help="Use beat-aligned ECG segmentation instead of fixed-size windows.")
+    parser.add_argument("--no-beat_aligned", dest="beat_aligned", action="store_false",
+                        help="")
     parser.add_argument("--use_subset_for_testing", action="store_true",
                         help="Use only a subset of the dataset for testing (useful for quick runs).")
     parser.add_argument("--n_sub_samples", type=int, default=1000,
@@ -125,6 +149,9 @@ def parse_args():
                         help="Directory where evaluation results (plots, metrics, reports) will be saved.")
     parser.add_argument("--db_name", type=str, default="ludb",
                         help="Name of the database for labeling purposes in results.")
+    parser.add_argument('--report_only', default=False, action=argparse.BooleanOptionalAction,
+                        help="Create report only without creating plots. Default: False")
+    
 
     return parser.parse_args()
 
@@ -144,7 +171,8 @@ def main_cli():
         n_sub_samples=args.n_sub_samples,
         seed=args.seed,
         results_dir=args.results_dir,
-        db_name=args.db_name
+        db_name=args.db_name,
+        report_only=args.report_only
     )
     print("\n✅ All tasks completed successfully!")
 
