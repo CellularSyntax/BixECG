@@ -176,6 +176,11 @@ class BiXLSTM2(nn.Module): # with shared weights
         dropout: float = 0.3,
         num_classes: int = 4,
         slstm_backend: str = None, 
+        round_slstm_proj_up_dim_up: bool = True,
+        round_slstm_proj_up_to_multiple_of: int = 64,
+        qkv_proj_blocksize: int = 2,
+        round_mlstm_proj_up_dim_up: bool = True,
+        round_mlstm_proj_up_to_multiple_of: int = 64,
     ):
         super().__init__()
         # Auto-detect backend if not specified
@@ -188,8 +193,10 @@ class BiXLSTM2(nn.Module): # with shared weights
         mlstm_cfg = mLSTMBlockConfig(
             mlstm=mLSTMLayerConfig(
                 conv1d_kernel_size=conv1d_kernel_size,
-                qkv_proj_blocksize=2,
+                qkv_proj_blocksize=qkv_proj_blocksize,
                 num_heads=num_heads,
+                round_proj_up_dim_up=round_mlstm_proj_up_dim_up,
+                round_proj_up_to_multiple_of=round_mlstm_proj_up_to_multiple_of
             )
         )
 
@@ -202,6 +209,8 @@ class BiXLSTM2(nn.Module): # with shared weights
             ),
             feedforward=FeedForwardConfig(
                 proj_factor=proj_factor,
+                round_proj_up_dim_up=round_slstm_proj_up_dim_up,
+                round_proj_up_to_multiple_of=round_slstm_proj_up_to_multiple_of,
                 act_fn="gelu"
             ),
         ) if use_slstm else None
@@ -235,6 +244,102 @@ class BiXLSTM2(nn.Module): # with shared weights
         #x = self.norm(x)
         logits = self.output_proj(x)
         return logits
+
+
+
+
+
+
+class BiXLSTM2_nonshared(nn.Module): # with shared weights
+    def __init__(
+        self,
+        seq_length: int = 500,
+        input_dim: int = 1,
+        embedding_dim: int = 64,
+        num_blocks: int = 4,
+        num_heads: int = 2,
+        conv1d_kernel_size: int = 3,
+        proj_factor: float = 1.1,
+        slstm_at: list = [1],
+        use_slstm: bool = True,
+        dropout: float = 0.3,
+        num_classes: int = 4,
+        slstm_backend: str = None, 
+        round_slstm_proj_up_dim_up: bool = True,
+        round_slstm_proj_up_to_multiple_of: int = 64,
+        qkv_proj_blocksize: int = 2,
+        round_mlstm_proj_up_dim_up: bool = True,
+        round_mlstm_proj_up_to_multiple_of: int = 64,
+    ):
+        super().__init__()
+        # Auto-detect backend if not specified
+        if slstm_backend is None:
+            slstm_backend = "cuda" if torch.cuda.is_available() else "vanilla"
+
+        self.input_proj = nn.Linear(input_dim, embedding_dim)
+
+        mlstm_cfg = mLSTMBlockConfig(
+            mlstm=mLSTMLayerConfig(
+                conv1d_kernel_size=conv1d_kernel_size,
+                qkv_proj_blocksize=qkv_proj_blocksize,
+                num_heads=num_heads,
+                round_proj_up_dim_up=round_mlstm_proj_up_dim_up,
+                round_proj_up_to_multiple_of=round_mlstm_proj_up_to_multiple_of
+            )
+        )
+
+        slstm_cfg = sLSTMBlockConfig(
+            slstm=sLSTMLayerConfig(
+                backend=slstm_backend,
+                num_heads=num_heads,
+                conv1d_kernel_size=conv1d_kernel_size,
+                bias_init="powerlaw_blockdependent",
+            ),
+            feedforward=FeedForwardConfig(
+                proj_factor=proj_factor,
+                round_proj_up_dim_up=round_slstm_proj_up_dim_up,
+                round_proj_up_to_multiple_of=round_slstm_proj_up_to_multiple_of,
+                act_fn="gelu"
+            ),
+        ) if use_slstm else None
+
+        xlstm_cfg = xLSTMBlockStackConfig(
+            context_length=seq_length,
+            embedding_dim=embedding_dim,
+            num_blocks=num_blocks,
+            mlstm_block=mlstm_cfg,
+            slstm_block=slstm_cfg,
+            slstm_at=slstm_at if use_slstm else [],
+        )
+
+        self.xlstm_stack_fw = xLSTMBlockStack(xlstm_cfg)
+        self.xlstm_stack_bw = xLSTMBlockStack(xlstm_cfg)
+
+        self.dropout = nn.Dropout(dropout)
+        #self.norm = nn.LayerNorm(2 * embedding_dim)
+        self.output_proj = nn.Linear(embedding_dim, num_classes)
+
+    def forward(self, x):
+        x = self.input_proj(x)  # (B, T, D)
+
+        x_forward = self.xlstm_stack_fw(x)  # (B, T, D)
+        x_backward = self.xlstm_stack_bw(x.flip(1)).flip(1)
+
+        x = (x_forward + x_backward) / 2
+
+        x = self.dropout(x)
+        #x = self.norm(x)
+        logits = self.output_proj(x)
+        return logits
+
+
+
+
+
+
+
+
+
 
 
 

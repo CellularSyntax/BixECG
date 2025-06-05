@@ -135,7 +135,7 @@ def z_normalize(seq):
 
 def extract_beat_aligned_sequences(
     ecg_signal, label_signal, patient_signal, lead_signal, fs, 
-    beats_per_seq=2, seq_len_seconds=2.0, pad_label=-100, beat_aligned=True
+    beats_per_seq=2, seq_len_seconds=2.0, pad=True, pad_label=-100, beat_aligned=True
 ):
     """
     Extract ECG sequences based on either p-wave (label==1) onset positions (beat-aligned) 
@@ -171,7 +171,10 @@ def extract_beat_aligned_sequences(
 
         for i in range(len(p_wave_starts) - beats_per_seq):
             start = p_wave_starts[i]
-            end = p_wave_starts[i + beats_per_seq]
+            if pad:
+                end = p_wave_starts[i + beats_per_seq]
+            else:
+                end = start + max_len
             segment_len = end - start
 
             if segment_len > max_len:
@@ -249,7 +252,8 @@ def select_random_sequences(x_seq, y_seq, n_samples, seed=None):
 
 def extract_sequences_simple(
     ecg_signal, label_signal, fs,
-    beats_per_seq=2, seq_len_seconds=2.0, pad_label=-100, beat_aligned=True
+    beats_per_seq=2, seq_len_seconds=2.0, pad_label=-100, beat_aligned=True,
+    pad=True,
 ):
     max_len = int(seq_len_seconds * fs)
 
@@ -262,8 +266,12 @@ def extract_sequences_simple(
         p_wave_starts = np.where(transitions)[0]
 
         # Create start and end indices as arrays
-        starts = p_wave_starts[:-beats_per_seq]
-        ends = p_wave_starts[beats_per_seq:]
+        if pad:
+            starts = p_wave_starts[:-beats_per_seq]
+            ends = p_wave_starts[beats_per_seq:]
+        else:
+            starts = p_wave_starts
+            ends = starts + max_len
 
         segments = [(s, e) for s, e in zip(starts, ends) if (e - s) <= max_len and (e - s) >= 10]
 
@@ -299,6 +307,35 @@ def extract_sequences_simple(
 
     return x_seqs, y_seqs
 
+
+
+def extract_sequences_starting_with_wave(
+    ecg_signal, label_signal, fs, seq_len_seconds=2.0, start_label=2,
+):
+    seq_len = int(seq_len_seconds * fs)
+
+    x_seqs = []
+    y_seqs = []
+
+    
+
+    is_p_wave = label_signal == start_label
+    transitions = np.diff(np.concatenate([[0], is_p_wave.astype(int)])) == 1
+    p_wave_starts = np.where(transitions)[0]
+    
+    for (idx, s) in enumerate(p_wave_starts):
+        if s + seq_len > len(ecg_signal):
+            break
+        x_seqs.append(ecg_signal[s:s+seq_len])
+        y_seqs.append(label_signal[s:s+seq_len])
+
+    x_seqs = np.stack(x_seqs, axis=0)
+    y_seqs = np.stack(y_seqs, axis=0)
+
+
+    return x_seqs, y_seqs
+
+
 def get_exclude_sequence_ids(config):
     """
     Load merged sequence assessment CSV and return a list of sequence IDs to exclude.
@@ -309,6 +346,8 @@ def get_exclude_sequence_ids(config):
     """
     # Path to merged CSV
     csv_path = f"{config['base_path']}/seq_assessment.csv"
+    if not os.path.exists(csv_path):
+        return []
 
     # Load CSV
     meta_seq = pd.read_csv(csv_path, keep_default_na=False)
@@ -317,6 +356,18 @@ def get_exclude_sequence_ids(config):
     exclude_ids = meta_seq.loc[meta_seq["Selected"] == "Yes", "Sequence"].tolist()
 
     return exclude_ids
+
+# with open("all_ecg_data.csv", "w") as f:
+#     for patient_id in range(1, 201):
+#         for lead in range(0, 12):
+#             #print("Loading patient_id:", patient_id, "lead:", lead)
+#             xs = np.load(f"/home/david/CARDISENSE/Datasets/.parsed/ludb/{patient_id}_lead{lead}_fs250_x.npy")
+#             ys = np.load(f"/home/david/CARDISENSE/Datasets/.parsed/ludb/{patient_id}_lead{lead}_fs250_y.npy")
+#             for i in range(len(xs)):
+#                 x = xs[i]
+#                 y = ys[i]
+#                 f.write(f"{x},{y},{patient_id},{lead+1}\n")
+    
 
 def load_ecg_data(config, split_ratio=1.0):
     """Load ECG signals, labels, patient IDs, and leads from a single CSV file, split by patient ID."""
@@ -404,7 +455,7 @@ def compute_class_weights(y_train_seq, num_classes):
     y_filtered = y_flat[y_flat != -100]
     return compute_class_weight(class_weight='balanced', classes=valid_classes, y=y_filtered)
 
-def get_dataloaders(x_train_seq, y_train_seq, x_val_seq, y_val_seq, batch_size, num_workers=4):
+def get_dataloaders(x_train_seq, y_train_seq, x_val_seq, y_val_seq, batch_size, num_workers=4, gpu_dataloader=False):
     def to_torch(x, y):
         return (torch.tensor(x[:, :, np.newaxis], dtype=torch.float32), torch.tensor(y, dtype=torch.long))
 
@@ -413,10 +464,11 @@ def get_dataloaders(x_train_seq, y_train_seq, x_val_seq, y_val_seq, batch_size, 
 
     train_ds = TensorDataset(x_train_t, y_train_t)
     val_ds = TensorDataset(x_val_t, y_val_t)
+    
 
     return (
-        DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True),
-        DataLoader(val_ds, batch_size=batch_size, num_workers=num_workers, pin_memory=True)
+        DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True, pin_memory_device='cuda'),
+        DataLoader(val_ds, batch_size=batch_size, num_workers=1, pin_memory=True, pin_memory_device='cuda')
     )
 
 def get_device(config):
@@ -432,7 +484,7 @@ def build_model(config):
     with redirect_output_to_file(): # Suppress output from the model initialization as it can be verbose
         return get_model(config["model"]["name"], **config["model"]["params"])
     
-def train_epoch(model, loader, optimizer, loss_fn, device=None):
+def train_epoch(model, loader, optimizer, loss_fn, device=None, gpu_dataloader=False):
     model.train()
     total_loss = 0.0
     start_time = time.time()
@@ -487,7 +539,7 @@ def train_epoch(model, loader, optimizer, loss_fn, device=None):
     print(f"🕒 Train epoch completed in {duration:.2f} seconds")
     return total_loss / len(loader)
 
-def validate(model, loader, loss_fn, device=None):
+def validate(model, loader, loss_fn, device=None, gpu_dataloader=False):
     model.eval()
     total_loss = 0.0
     start_time = time.time()

@@ -32,6 +32,11 @@ def get_tolerance_map():
         3: 124,   # T-wave ±31 → ~124 ms
     }
 
+def smoothen(args):
+    i, padded, window_size = args
+    window = padded[:, i:i+window_size]
+    return scipy_stats.mode(window, axis=1, keepdims=False)[0]
+
 def majority_vote_smoothing(predictions, window_size=5):
     """
     Apply majority voting smoothing along the sequence.
@@ -41,13 +46,28 @@ def majority_vote_smoothing(predictions, window_size=5):
     Returns:
         smoothed_predictions: np.ndarray of same shape
     """
+
+    from multiprocessing import Pool
+
+
     pad = window_size // 2
     padded = np.pad(predictions, ((0,0), (pad, pad)), mode='edge')
     smoothed = np.zeros_like(predictions)
 
+    args = []
     for i in range(predictions.shape[1]):
-        window = padded[:, i:i+window_size]
-        smoothed[:, i] = scipy_stats.mode(window, axis=1, keepdims=False)[0]
+        args.append([i, padded, window_size])
+
+    with Pool(processes=6) as p:
+        res = p.map(smoothen, args)
+
+    for i in range(predictions.shape[1]):
+        smoothed[:, i] = res[i]
+
+    # for i in range(predictions.shape[1]):
+    #     window = padded[:, i:i+window_size]
+    #     smoothed[:, i] = scipy_stats.mode(window, axis=1, keepdims=False)[0]
+
 
     return smoothed
 
@@ -387,7 +407,7 @@ def run_mc_dropout_uncertainty(model, inputs, n_samples=20, batch_size=32):
     device = next(model.parameters()).device
     preds = []
 
-    inputs = inputs.to(device)
+    #inputs = inputs.to(device)
     dataset = torch.utils.data.TensorDataset(inputs)
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
@@ -415,13 +435,14 @@ def run_mc_dropout_uncertainty(model, inputs, n_samples=20, batch_size=32):
 
 def quantify_classwise_uncertainty(model, inputs, true_labels, target_names, device="cuda", n_samples=20, batch_size=16, save_dir=None):
     model.train()  # Enable dropout during inference
-    inputs = inputs.to(device)
-    true_labels = true_labels.to(device)
+    #inputs = inputs.to(device)
+    #true_labels = true_labels.to(device)
 
     preds = []
     dataset = torch.utils.data.TensorDataset(inputs)
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
+    print(f"n_samples: {n_samples}, batch_size: {batch_size}, loader length: {len(loader)}")
     for _ in range(n_samples):
         all_probs = []
         for (x_batch,) in loader:
@@ -430,12 +451,24 @@ def quantify_classwise_uncertainty(model, inputs, true_labels, target_names, dev
                 outputs = model(x_batch)
                 probs = torch.softmax(outputs, dim=-1)
                 all_probs.append(probs.cpu().numpy())
+                #all_probs.append(probs)
+        
+        #all_probs = torch.concaten(all_probs, axis=0)
         all_probs = np.concatenate(all_probs, axis=0)
         preds.append(all_probs)
 
+
+        
     preds = np.stack(preds)  # (n_samples, N, T, C)
+
+    #print(f"{preds[0, 0, 0:5, 0]}   {preds[1, 0, 0:5, 0]}   {preds[-1, 0, 0:5, 0]}")
+
     mean_preds = np.mean(preds, axis=0)  # (N, T, C)
     entropy = -np.sum(mean_preds * np.log(mean_preds + 1e-8), axis=-1)  # (N, T)
+    #preds = torch.stack(preds) # (n_samples, N, T, C)
+    #mean_preds = torch.mean(preds, dim=0)  # (N, T, C)
+    #entropy = -torch.sum(mean_preds * torch.log(mean_preds + 1e-8), dim=-1)  # (N, T)
+    #entropy = entropy.cpu().numpy()  # Convert to numpy array
 
     # Flatten entropy and labels
     entropy_flat = entropy.flatten()
@@ -669,8 +702,8 @@ def quantify_wave_vs_background_uncertainty(model, inputs, true_labels, wave_cla
     import matplotlib.pyplot as plt
 
     model.train()  # Enable MC Dropout
-    inputs = inputs.to(device)
-    true_labels = true_labels.to(device)
+    #inputs = inputs.to(device)
+    #true_labels = true_labels.to(device)
 
     preds = []
     dataset = torch.utils.data.TensorDataset(inputs)
@@ -793,7 +826,7 @@ def explain_model_predictions(model, ludb_x, ludb_y, save_dir, target_names, SEQ
 
     subset_size = 20
     n_samples = 5
-    batch_size_mc = 8
+    batch_size_mc = 16
 
     torch.cuda.empty_cache()
 
@@ -817,7 +850,7 @@ def explain_model_predictions(model, ludb_x, ludb_y, save_dir, target_names, SEQ
         target_names=target_names,
         device=device,
         n_samples=20,
-        batch_size=16,
+        batch_size=64,
         save_dir=explain_dir
     )
 
@@ -830,7 +863,7 @@ def explain_model_predictions(model, ludb_x, ludb_y, save_dir, target_names, SEQ
         wave_class_indices=wave_class_indices,
         device=device,
         n_samples=20,
-        batch_size=16,
+        batch_size=64,
         save_dir=explain_dir
     )
 
@@ -1007,58 +1040,67 @@ def evluate_on_db(model, test_loader, x_test_tensor, y_test_tensor,
     
     # 1. Inference
     y_pred, y_true, logits_all = run_inference(model, test_loader, ignore_index)
+    print("Infernce finished")
     y_pred_seq = y_pred.reshape(-1, SEQ_LEN)
     y_true_seq = y_true.reshape(-1, SEQ_LEN)
     y_pred_seq = majority_vote_smoothing(y_pred_seq, window_size=30)
+    print("majority_vote_smoothing finished")
 
     # 2. Strict Evaluation
     strict_stats = evaluate_strict(y_true, y_pred, target_names, save_dir, ignore_index, report_only=report_only)
     stats.update({"strict_classification_report": strict_stats["classification_report"],
                   "cohen_kappa_strict": strict_stats["cohen_kappa"]})
 
-    # 3. ROC + Temperature Scaling
-    probs, temp, macro_auc = generate_roc_and_temperature_scaling(
-        model, logits_all, y_true, save_dir, target_names, ignore_index,
-        report_only=report_only
-    )
-    stats.update({"temperature_scaling_T": temp, "strict_macro_auc": macro_auc})
 
-    # 4. Calibration
-    ece, accs, confs, bins, ece_ci = compute_ece_bootstrapped(y_true[y_true != ignore_index], probs, n_bins=20, n_bootstrap=200)
-    stats["expected_calibration_error_overall"] = {"ece": ece, "95%_CI": [ece_ci[0], ece_ci[1]]}
+
     if not report_only:
+        
+        # 3. ROC + Temperature Scaling
+        probs, temp, macro_auc = generate_roc_and_temperature_scaling(
+            model, logits_all, y_true, save_dir, target_names, ignore_index,
+            report_only=report_only
+        )
+        stats.update({"temperature_scaling_T": temp, "strict_macro_auc": macro_auc})
+
+        # 4. Calibration
+        ece, accs, confs, bins, ece_ci = compute_ece_bootstrapped(y_true[y_true != ignore_index], probs, n_bins=20, n_bootstrap=200)
+        stats["expected_calibration_error_overall"] = {"ece": ece, "95%_CI": [ece_ci[0], ece_ci[1]]}
+
+        # 6. Bland-Altman and Correlation
+        bland_corr_results, matching_failures = analyze_bland_altman_and_correlation_per_sequence(
+            y_true_seq=y_true_seq, y_pred_seq=y_pred_seq, target_names=target_names, Fs=Fs, save_dir=save_dir,
+            report_only=report_only
+        )
+        stats.update({"bland_altman_correlation": bland_corr_results,
+                    "bland_altman_matching_failures": matching_failures})
+
+        
         plot_reliability_diagram(accs, confs, bins, ece_value=ece, ci=ece_ci,
                                 save_path=os.path.join(save_dir, "reliability_diagram_overall"))
         
 
-    # 5. Uncertainty
-    subset_indices = np.random.choice(len(x_test_tensor), size=20, replace=False)
-    subset_x = x_test_tensor[subset_indices]
-    subset_y = y_test_tensor[subset_indices]
-    entropy = run_mc_dropout_uncertainty(model, subset_x.to(next(model.parameters()).device), n_samples=10, batch_size=256)
-    
-    # Additional plots: entropy vs error/confidence
-    with torch.no_grad():
-        subset_logits = model(subset_x.to(next(model.parameters()).device))
-        subset_logits[subset_y == ignore_index] = float('-inf')
-        subset_probs = torch.softmax(subset_logits, dim=-1).cpu().numpy()
-    entropy_valid = entropy.flatten()[subset_y.flatten() != ignore_index]
-    probs_valid = subset_probs.reshape(-1, subset_probs.shape[-1])[subset_y.flatten() != ignore_index]
-    y_true_valid = subset_y.flatten()[subset_y.flatten() != ignore_index].cpu().numpy()
+        # 5. Uncertainty
+        subset_indices = np.random.choice(len(x_test_tensor), size=20, replace=False)
+        subset_x = x_test_tensor[subset_indices]
+        subset_y = y_test_tensor[subset_indices]
+        entropy = run_mc_dropout_uncertainty(model, subset_x.to(next(model.parameters()).device), n_samples=10, batch_size=64)
+        
+        # Additional plots: entropy vs error/confidence
+        with torch.no_grad():
+            subset_logits = model(subset_x.to(next(model.parameters()).device))
+            subset_logits[subset_y == ignore_index] = float('-inf')
+            subset_probs = torch.softmax(subset_logits, dim=-1).cpu().numpy()
+        entropy_valid = entropy.flatten()[subset_y.flatten() != ignore_index]
+        probs_valid = subset_probs.reshape(-1, subset_probs.shape[-1])[subset_y.flatten() != ignore_index]
+        y_true_valid = subset_y.flatten()[subset_y.flatten() != ignore_index].cpu().numpy()
 
-    if not report_only:
-        plot_entropy_vs_error_rate(y_true_valid, probs_valid, entropy_valid,
-                                save_path_prefix=os.path.join(save_dir, "entropy_vs_error_rate"))
-        plot_entropy_vs_confidence(probs_valid, entropy_valid,
-                                save_path_prefix=os.path.join(save_dir, "entropy_vs_confidence"))
+        if not report_only:
+            plot_entropy_vs_error_rate(y_true_valid, probs_valid, entropy_valid,
+                                    save_path_prefix=os.path.join(save_dir, "entropy_vs_error_rate"))
+            plot_entropy_vs_confidence(probs_valid, entropy_valid,
+                                    save_path_prefix=os.path.join(save_dir, "entropy_vs_confidence"))
 
-    # 6. Bland-Altman and Correlation
-    bland_corr_results, matching_failures = analyze_bland_altman_and_correlation_per_sequence(
-        y_true_seq=y_true_seq, y_pred_seq=y_pred_seq, target_names=target_names, Fs=Fs, save_dir=save_dir,
-        report_only=report_only
-    )
-    stats.update({"bland_altman_correlation": bland_corr_results,
-                  "bland_altman_matching_failures": matching_failures})
+        
 
     # 7. Tolerance-aware evaluation (optional)
     if tolerance_map is not None:
@@ -1071,6 +1113,8 @@ def evluate_on_db(model, test_loader, x_test_tensor, y_test_tensor,
         y_pred_tol_flat = y_pred_tol.flatten()
         valid_mask = y_true_flat != ignore_index
 
+        y_pred_seq_tol = y_pred_tol.reshape(-1, SEQ_LEN)
+
         report_tol = classification_report(
             y_true_flat[valid_mask], y_pred_tol_flat[valid_mask],
             labels=list(range(len(target_names))), target_names=target_names, digits=3, output_dict=True
@@ -1078,6 +1122,27 @@ def evluate_on_db(model, test_loader, x_test_tensor, y_test_tensor,
         tol_kappa = cohen_kappa_score(y_true_flat[valid_mask], y_pred_tol_flat[valid_mask])
         stats.update({"tolerance_aware_classification_report": report_tol,
                       "cohen_kappa_tolerance": tol_kappa})
+        
+
+
+        # # # 3. ROC + Temperature Scaling
+        # # probs_tol, temp_tol, macro_auc_tol = generate_roc_and_temperature_scaling(
+        # #     model, logits_all, y_true, save_dir, target_names, ignore_index,
+        # #     report_only=report_only
+        # # )
+        # # stats.update({"temperature_scaling_T_tolerance": temp_tol, "macro_auc_tolerance": macro_auc_tol})
+
+        # # # 4. Calibration
+        # # ece_tol, accs_tol, confs_tol, bins_tol, ece_ci_tol = compute_ece_bootstrapped(y_true_flat[valid_mask], probs_tol, n_bins=20, n_bootstrap=200)
+        # # stats["expected_calibration_error_overall"] = {"ece": ece_tol, "95%_CI": [ece_ci_tol[0], ece_ci_tol[1]]}
+
+        # # 6. Bland-Altman and Correlation
+        # bland_corr_results_tol, matching_failures_tol = analyze_bland_altman_and_correlation_per_sequence(
+        #     y_true_seq=y_true_seq, y_pred_seq=y_pred_seq_tol, target_names=target_names, Fs=Fs, save_dir=save_dir,
+        #     report_only=report_only
+        # )
+        # stats.update({"bland_altman_correlation_tolerance": bland_corr_results_tol,
+        #             "bland_altman_matching_failures_tolerance": matching_failures_tol})
         
         # Tolerance Confusion Matrix
         if not report_only:
@@ -1124,9 +1189,10 @@ def evluate_on_db(model, test_loader, x_test_tensor, y_test_tensor,
 
     full_info = {
         "model_size_kb": get_model_size(model_path),
-        "inference_time_per_batch_sec": measure_inference_time(model, loader),
         "evaluation_metrics": stats
     }
+    if not report_only:
+        full_info["inference_time_per_batch_sec"] = measure_inference_time(model, loader)
 
     if report_only:
         return full_info

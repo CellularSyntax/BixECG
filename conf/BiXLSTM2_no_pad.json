@@ -1,0 +1,46 @@
+{
+  "name": "BiXLSTM2new",
+  "model": {
+      "name": "bixlstmnew",
+      "params": {
+        "input_dim": 1,
+        "num_classes": 4,
+        "embedding_dim": 8,
+        "num_blocks": 3,
+        "num_heads": 2,
+        "conv1d_kernel_size": 61,
+        "slstm_at": [],
+        "dropout": 0.4,
+        "slstm_backend": "cuda",
+        "proj_factor": 1.3,
+        "round_slstm_proj_up_dim_up": false,
+        "round_slstm_proj_up_to_multiple_of": 1,
+        "qkv_proj_blocksize": 2,
+        "round_mlstm_proj_up_dim_up": true,
+        "round_mlstm_proj_up_to_multiple_of": 2
+      }
+    },
+    "device": "cuda",
+    "base_path": "../DATA/QTDataset",
+    "pad": false,
+    "epochs": 20,
+    "batch_size": 256,
+    "batch_size_reduction_factor": 0.8,
+    "patience": 5,
+    "initial_lr": 0.004,
+    "Fs": 250,
+    "heart_beats": 1,
+    "seq_dur": 1.2,
+  
+    "f1_eval_interval": 5,
+    "target_names": ["No Wave", "P-Wave", "QRS Complex", "T-Wave"],
+  
+    "use_20_percent": true,
+    "label_smoothing": 0.05,
+  
+    "tolerance_map": {
+      "1": 52,
+      "2": 48,
+      "3": 124
+    }
+  }

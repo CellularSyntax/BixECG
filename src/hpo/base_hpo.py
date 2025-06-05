@@ -22,6 +22,8 @@ import random
 import joblib
 import time
 
+from src.data.ludb_parser import LUDBParser
+
 from src.utils.scheduler import WarmupCosineScheduler
 from src.utils.helper_fns import (
     log_per_class_f1, extract_beat_aligned_sequences,
@@ -48,10 +50,26 @@ torch.autograd.set_detect_anomaly(False)
 
 
 class BaseHPO:
-    def __init__(self, multi_objective: bool, seed: int, hpo_mode: bool = True):
+    def __init__(self, multi_objective: bool, save_to: str, hpo_name: str, seed: int, hpo_mode: bool = True, beat_aligned:bool = True):
         self.multi_objective = multi_objective
+        self.save_to = save_to
+        self.hpo_name = hpo_name
         self.seed = seed
         self.hpo_mode = hpo_mode
+
+        self.x_train_seq = None
+        self.y_train_seq = None
+        self.x_val_seq = None
+        self.y_val_seq = None
+
+        self.device = None
+
+        self.beat_aligned = beat_aligned
+        
+        #dataloader_train, dataloader_val = ludb.get_dataloaders(x_train, y_train, x_val, y_val, batch_size=256)
+
+        self.data_db = "qtdb"
+        #self.gpu_dataloader = True
 
     def objective(self, trial: optuna.Trial, config_path: str, results_path: str):
         raise NotImplementedError("This method should be overridden by subclasses") 
@@ -60,22 +78,110 @@ class BaseHPO:
     def get_run_name(self, config: dict) -> str:
         raise NotImplementedError("This method should be overridden by subclasses")
     
-    
-    def init_and_run(self, trial, config, results_path, beat_aligned=True):
-        device = get_device(config)
+    def get_sequences(self, config):
+        if self.data_db == "qtdb":
+            # Data Loading and Preprocessing
+            x_train_raw, y_train_raw, patient_id_train, lead_train, _, _, _, _ = load_ecg_data(config)
+            x_train_filtered = filter_ecg(x_train_raw, config)
+
+            x_train_seq, y_train_seq, train_meta_seq = extract_beat_aligned_sequences(
+                ecg_signal=x_train_filtered, label_signal=y_train_raw, fs=config["Fs"],
+                beats_per_seq=config["heart_beats"], seq_len_seconds=config["seq_dur"],
+                patient_signal=patient_id_train, lead_signal=lead_train, beat_aligned=self.beat_aligned,
+                pad=config.get("pad", True)
+            )
+            print("pad " + str(config.get("pad", True)))
+                    
+            exclude_ids = get_exclude_sequence_ids(config)
+
+            # Filtering
+            train_keep_mask = ~np.isin(train_meta_seq[:, 2], exclude_ids)
+
+            # Apply mask
+            x_train_seq = x_train_seq[train_keep_mask]
+            y_train_seq = y_train_seq[train_keep_mask]
+            self.train_meta_seq = train_meta_seq[train_keep_mask]
+
+            # Normalize
+            x_train_seq = np.array([z_normalize(seq) for seq in x_train_seq])
+            
+
+            self.x_train_seq, self.y_train_seq, self.x_val_seq, self.y_val_seq = split_train_val_by_patient(
+                x_seq=x_train_seq,
+                y_seq=y_train_seq,
+                meta_seq=self.train_meta_seq,
+                train_fraction=0.8,
+                random_seed=self.seed
+            )
+
+            # Class weights
+            self.class_weights = compute_class_weights(self.y_train_seq, config["model"]["params"]["num_classes"])
+            self.class_weights[0] *= 2  # Adjust class weights for No Wave class
+            self.class_weights_tensor = torch.tensor(self.class_weights, dtype=torch.float32).to(self.device)
+
+            
+
+        elif self.data_db == "ludb":
+            if self.x_train_seq is None:
+                ludb = LUDBParser()
+                data, labels = ludb.load_data() # (200, 12, T)
+                for rec in range(len(data)):
+                    for lead in range(len(data[rec])):
+                        data[rec][lead] = filter_ecg(data[rec][lead], config)
+                if self.beat_aligned:
+                    start_wave = "N"
+                else:
+                    start_wave = None
+                data, labels = ludb.cut_in_sequences(data, labels, seq_length = 300, start_wave = start_wave, stride=300) # (200, num_seq, seq_length)
+                for rec in range(len(data)):
+                    for seq in range(len(data[rec])):
+                        data[rec][seq] = z_normalize(data[rec][seq])
+                self.x_train_seq, self.y_train_seq, self.x_val_seq, self.y_val_seq = ludb.split_sequences(data, labels, split_at=0.8, seed=self.seed)
+                self.x_train_seq, self.y_train_seq, self.x_val_seq, self.y_val_seq = np.array(self.x_train_seq), np.array(self.y_train_seq), np.array(self.x_val_seq), np.array(self.y_val_seq)
+                
+
+                # Class weights
+                self.class_weights = compute_class_weights(self.y_train_seq, config["model"]["params"]["num_classes"])
+                self.class_weights[0] *= 2.0  # Adjust class weights for No Wave class
+                self.class_weights_tensor = torch.tensor(self.class_weights, dtype=torch.float32).to(self.device)
+
+            
+                
+
+        # Print number of patients and their IDs
+        print("\n--- Dataset Summary ---")
+        #print(f"Train patients: {len(np.unique(train_meta_seq[:, 0]))} ({np.unique(train_meta_seq[:, 0]).tolist()})")
+
+        # Print number of sequences
+        print(f"Train sequences: {self.x_train_seq.shape[0]}")
+        print(f"Validation sequences: {self.x_val_seq.shape[0]}")
+
+        print(f"normalized min = {np.min(self.x_train_seq)}, max = {np.max(self.x_train_seq)}")
+
         
+        print(f"Class weights: {self.class_weights}")
+
+        return self.x_train_seq, self.y_train_seq, self.x_val_seq, self.y_val_seq, self.class_weights_tensor
+    
+
+    def init_and_run(self, trial, config, results_path):
+        
+        if self.device is None:
+            self.device = get_device(config)
         
 
         batch_size = config["batch_size"]
         writer = None
 
         while(batch_size > 8):
+            train_loader, val_loader = None, None
+            optimizer = None
             try:
                 print("#############################")
                 print(config)
                 print("#############################")
 
-                time.sleep(1)
+                time.sleep(2)
                 torch.cuda.empty_cache()
 
 
@@ -93,9 +199,7 @@ class BaseHPO:
                 print(f"run dir: {run_name}")
                 writer = SummaryWriter(log_dir)
 
-                # Data Loading and Preprocessing
-                x_train_raw, y_train_raw, patient_id_train, lead_train, _, _, _, _ = load_ecg_data(config)
-                x_train_filtered = filter_ecg(x_train_raw, config)
+                
                 
                 seed = self.seed
                 random.seed(seed)
@@ -106,54 +210,13 @@ class BaseHPO:
                 torch.backends.cudnn.deterministic = True
                 torch.backends.cudnn.benchmark = False
 
-                x_train_seq, y_train_seq, train_meta_seq = extract_beat_aligned_sequences(
-                    ecg_signal=x_train_filtered, label_signal=y_train_raw, fs=config["Fs"],
-                    beats_per_seq=config["heart_beats"], seq_len_seconds=config["seq_dur"],
-                    patient_signal=patient_id_train, lead_signal=lead_train, beat_aligned=beat_aligned
-                )
-                
-                exclude_ids = get_exclude_sequence_ids(config)
-
-                # Filtering
-                train_keep_mask = ~np.isin(train_meta_seq[:, 2], exclude_ids)
-
-                # Apply mask
-                x_train_seq = x_train_seq[train_keep_mask]
-                y_train_seq = y_train_seq[train_keep_mask]
-                train_meta_seq = train_meta_seq[train_keep_mask]
-
-                # Normalize
-                x_train_seq = np.array([z_normalize(seq) for seq in x_train_seq])
-                print(f"normalized min = {np.min(x_train_seq)}, max = {np.max(x_train_seq)}")
-
-                x_train_seq, y_train_seq, x_val_seq, y_val_seq = split_train_val_by_patient(
-                    x_seq=x_train_seq,
-                    y_seq=y_train_seq,
-                    meta_seq=train_meta_seq,
-                    train_fraction=0.8,
-                    random_seed=42
-                )
-
-                # Print number of patients and their IDs
-                print("\n--- Dataset Summary ---")
-                print(f"Train patients: {len(np.unique(train_meta_seq[:, 0]))} ({np.unique(train_meta_seq[:, 0]).tolist()})")
-
-                # Print number of sequences
-                print(f"Train sequences: {x_train_seq.shape[0]}")
-                print(f"Validation sequences: {x_val_seq.shape[0]}")
-
-                # Class weights
-                class_weights = compute_class_weights(y_train_seq, config["model"]["params"]["num_classes"])
-                class_weights[0] *= 2.0  # Adjust class weights for No Wave class
-                class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
-
-                print(f"Class weights: {class_weights}")
+                x_train_seq, y_train_seq, x_val_seq, y_val_seq, class_weights_tensor = self.get_sequences(config)
 
                 # Data Loaders
                 train_loader, val_loader = get_dataloaders(x_train_seq, y_train_seq, x_val_seq, y_val_seq, batch_size)
 
                 # Model
-                model = build_model(config).to(device)
+                model = build_model(config).to(self.device)
                 
                 optimizer = torch.optim.Adam(model.parameters(), lr=config["initial_lr"])
 
@@ -166,7 +229,7 @@ class BaseHPO:
 
                 loss_fn = nn.CrossEntropyLoss(
                     ignore_index=-100, weight=class_weights_tensor, label_smoothing=0.05
-                ).to(device)
+                ).to(self.device)
 
                 return self.run(
                     trial, 
@@ -200,6 +263,8 @@ class BaseHPO:
                     raise e
             finally:
                 model = None
+                train_loader, val_loader = None, None
+                optimizer = None
                 if writer is not None:
                     writer.close()
     
@@ -246,6 +311,8 @@ class BaseHPO:
             f.write(str(model_summary))
         with open(f"{model_dir}/model_summary_single_batch.txt", "w") as f:
             f.write(str(summary(model, verbose=0, input_size=(1, *input_size[1:]), col_names=["input_size", "output_size", "mult_adds", "num_params"])))
+        with open(f"{model_dir}/model_summary_deep.txt", "w") as f:
+            f.write(str(summary(model, depth=10, verbose=0, input_size=(1, *input_size[1:]), col_names=["input_size", "output_size", "mult_adds", "num_params"])))
         batch_x, batch_y = None, None
 
 
@@ -386,14 +453,15 @@ class BaseHPO:
         except KeyboardInterrupt:
             print("\n\n=== KeyboardInterrupt detected! Gracefully exiting... ===\n")
             stop_reason = "KeyboardInterrupt"
+            ret = best_macro_f1
             if macro_f1 == 0:
                 # not even a single epoch was completed
                 if trial is not None:
                     trial.set_user_attr("reason", "keyboard interrupt")
+                ret = train_loss
             if self.multi_objective:
-                return train_loss, n_params
-            else:
-                return train_loss
+                ret = ret, n_params
+            return ret
         except Exception as e:
             stop_reason = f"Exception ({str(e)})"
             raise e
@@ -429,9 +497,9 @@ class BaseHPO:
     def main(self, config_path):
         config = json.load(open(config_path))
 
-        hpo_name = "hpo_multi_qrs_aligned"
+        hpo_name = self.hpo_name
 
-        results_path = os.path.join("results", hpo_name, f'{config["name"]}')
+        results_path = os.path.join(self.save_to, hpo_name, f'{config["name"]}')
         os.makedirs(results_path, exist_ok=True)
 
         seed = self.seed
@@ -458,7 +526,7 @@ class BaseHPO:
         pruner = optuna.pruners.MedianPruner(n_startup_trials=10, n_warmup_steps=10)
 
         if self.multi_objective:
-            #sampler = optuna.samplers.NSGAIISampler(seed=seed)
+            #sampler = optuna.samplers.NSGAIISampler(seed=seed, population_size=10)
             sampler = optuna.samplers.TPESampler(seed=seed)
             study = optuna.create_study(
                 sampler=sampler,
@@ -482,24 +550,22 @@ class BaseHPO:
             #return objective(trial, config, x=x_train_filtered, y=y_train_raw, patient_id=patient_id_train, lead=lead_train)
             return self.objective(trial, config_path, results_path)
         
-        study.optimize(objective_wrapper, n_trials=60)
+        try:
+            study.optimize(objective_wrapper, n_trials=3)
 
-        pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
-        complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
+            pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
+            complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
 
-        print("Study statistics: ")
-        print("  Number of finished trials: ", len(study.trials))
-        print("  Number of pruned trials: ", len(pruned_trials))
-        print("  Number of complete trials: ", len(complete_trials))
+            print("Study statistics: ")
+            print("  Number of finished trials: ", len(study.trials))
+            print("  Number of pruned trials: ", len(pruned_trials))
+            print("  Number of complete trials: ", len(complete_trials))
 
-        print("\n")
-        print(study.trials_dataframe())
-        print("\n")
+            print("\n")
+            print(study.trials_dataframe())
+            print("\n")
 
-        print("Best trial:")
-        trial = study.best_trial
-
-
-        print("  Value: ", trial.value)
-
-        joblib.dump(study, os.path.join(results_path, "study.pkl"))
+        except KeyboardInterrupt:
+            print("\n\n=== KeyboardInterrupt detected! Gracefully exiting... ===\n")
+        finally:
+            joblib.dump(study, os.path.join(results_path, "study.pkl"))
