@@ -72,7 +72,7 @@ def main(model_name, data_dir="../DATA/ludb", filter_data=True, beat_aligned=Tru
     dataset = TensorDataset(x, y)
     loader = DataLoader(
         dataset,
-        batch_size=config["batch_size"],
+        batch_size=config['batch_size'],
         shuffle=False,
         num_workers=4,
         pin_memory=True

@@ -53,21 +53,21 @@ def objective(trial: optuna.Trial, config:dict, results_path):
     
     #num_blocks = trial.suggest_int("num_blocks", 1, 3)
     num_blocks = 1
-    config["model"]["params"]["num_blocks"] = num_blocks
+    config['model']['params']["num_blocks"] = num_blocks
     
 
     ## the performance also changes with a different batchsize
     ## could use max batch_size suggestion and reduce if needed
     #batch_size = trial.suggest_categorical('batch_size', [64, 128, 256, 512])
-    #config["batch_size"] = batch_size
+    #config['batch_size'] = batch_size
     
     # Now suggest other hyperparameters
     dropout = trial.suggest_float('dropout', 0.1, 0.5, step=0.05)
     dropout = float("{:.2f}".format(dropout))
-    config["model"]["params"]["dropout"] = dropout
+    config['model']['params']["dropout"] = dropout
     #embedding_dim = trial.suggest_categorical('embedding_dim', [12, 16, 20, 24, 28, 32, 36, 40, 48, 64, 80, 100])
-    config["model"]["params"]["embedding_dim"] = trial.suggest_int('embedding_dim', 12, 100, step=4)
-    config["model"]["params"]["conv1d_kernel_size"] = trial.suggest_categorical('conv1d_kernel_size', [4, 8, 20, 50])
+    config['model']['params']["embedding_dim"] = trial.suggest_int('embedding_dim', 12, 100, step=4)
+    config['model']['params']["conv1d_kernel_size"] = trial.suggest_categorical('conv1d_kernel_size', [4, 8, 20, 50])
     #conv1d_kernel_size = trial.suggest_int('conv1d_kernel_size', 11, 71, step=10)
 
     #seq_dur = config["seq_dur"]
@@ -75,11 +75,11 @@ def objective(trial: optuna.Trial, config:dict, results_path):
     seq_dur = float("{:.2f}".format(seq_dur))
     config["seq_dur"] = seq_dur
 
-    #config["model"]["params"]["sequence_length"] = trial.suggest_categorical('sequence_length', [100, 200, 300])
+    #config['model']['params']["sequence_length"] = trial.suggest_categorical('sequence_length', [100, 200, 300])
     
     config["SEQ_LEN"] = int(config["Fs"] * seq_dur)
 
-    config["model"]["params"]["seq_length"] = int(config["Fs"] * seq_dur)
+    config['model']['params']["seq_length"] = int(config["Fs"] * seq_dur)
 
     print("#############################")
     print(config)
@@ -106,7 +106,7 @@ def init_and_run(trial, config, results_path):
     x_train_raw, y_train_raw, patient_id_train, lead_train, _, _, _, _ = load_ecg_data(config)
     x_train_filtered = filter_ecg(x_train_raw, config)
 
-    batch_size = config["batch_size"]
+    batch_size = config['batch_size']
 
     while(batch_size > 8):
         try:
@@ -154,7 +154,7 @@ def init_and_run(trial, config, results_path):
             print(f"Validation sequences: {x_val_seq.shape[0]}")
 
             # Class weights
-            class_weights = compute_class_weights(y_train_seq, config["model"]["params"]["num_classes"])
+            class_weights = compute_class_weights(y_train_seq, config['model']['params']["num_classes"])
             class_weights[0] *= 2.0  # Adjust class weights for No Wave class
             class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
 
@@ -202,7 +202,7 @@ def init_and_run(trial, config, results_path):
                 # Handle OOM error by reducing batch_size
                 old_batch_size = batch_size
                 batch_size = int(batch_size * config["batch_size_reduction_factor"])
-                config["batch_size"] = batch_size
+                config['batch_size'] = batch_size
                 print(f"❗️ OutOfMemoryError - retrying with a new batchsize of {batch_size} (was {old_batch_size})")
                 #print(str(traceback.format_exc()))
             else:

@@ -73,14 +73,14 @@ def main(results_path="./res"):
     print(f"Validation sequences: {x_val_seq.shape[0]}")
 
     # Class weights
-    class_weights = compute_class_weights(y_train_seq, config["model"]["params"]["num_classes"])
+    class_weights = compute_class_weights(y_train_seq, config['model']['params']["num_classes"])
     class_weights[0] *= 2.0  # Adjust class weights for No Wave class
     class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
 
     print(f"Class weights: {class_weights_tensor}")
 
     # Data Loaders
-    train_loader, val_loader = get_dataloaders(x_train_seq, y_train_seq, x_val_seq, y_val_seq, config["batch_size"])
+    train_loader, val_loader = get_dataloaders(x_train_seq, y_train_seq, x_val_seq, y_val_seq, config['batch_size'])
 
     # Model
     model = build_model(config).to(device)

@@ -51,13 +51,13 @@ def main(results_path="./res"):
     print(f"Train sequences: {x_train.shape[0]}")
     print(f"Validation sequences: {x_val.shape[0]}")
 
-    class_weights = compute_class_weights(y_train, config["model"]["params"]["num_classes"])
+    class_weights = compute_class_weights(y_train, config['model']['params']["num_classes"])
     class_weights[0] *= 2.0
     class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
     print(f"Class weights: {class_weights_tensor}")
 
     train_loader, val_loader = get_dataloaders(
-        x_train, y_train, x_val, y_val, config["batch_size"]
+        x_train, y_train, x_val, y_val, config['batch_size']
     )
 
     # === Build model ===

@@ -34,12 +34,11 @@ authors:
     family-names: Haberbusch
     affiliation: "Medical University of Vienna"
     email: max.haberbusch@meduniwien.ac.at
-    orcid: ""
 preferred-citation:
-  type: article
+  type: generic
   title: "A Compact, Uncertainty-Aware mLSTM Model for Real-Time ECG Delineation on Edge Devices"
-  journal: "Expert Systems with Applications"
   year: 2026
+  notes: "Preprint; journal submission in preparation."
   authors:
     - given-names: David
       family-names: Lung

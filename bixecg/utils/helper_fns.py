@@ -429,7 +429,7 @@ def get_device(config):
 
 def build_model(config):
     with redirect_output_to_file(): # Suppress output from the model initialization as it can be verbose
-        return get_model(config["model"]["name"], **config["model"]["params"])
+        return get_model(config["model"]["name"], **config['model']['params'])
     
 def train_epoch(model, loader, optimizer, loss_fn, device=None):
     model.train()
@@ -512,7 +512,7 @@ def write_hparams(writer, config, val_loss=0.0, macrof1=0.0):
     #         config[key] = "n/a"
 
     hparams = {
-        **config["model"]["params"],
+        **config['model']['params'],
         'seq_len': config['SEQ_LEN'],
         'batch_size': config['batch_size'],
         'initial_lr': config['initial_lr'],

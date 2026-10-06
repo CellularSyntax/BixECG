@@ -11,7 +11,7 @@
 ## About
 
 Official code for the paper **"A Compact, Uncertainty-Aware mLSTM Model for Real-Time ECG
-Delineation on Edge Devices"** (Expert Systems with Applications, 2026).
+Delineation on Edge Devices"** (Lung et al., 2026).
 
 **BixECG** performs **per-sample ECG waveform delineation** — labelling every sample of a
 single-lead ECG as **No-Wave (NW), P-wave, QRS-complex, or T-wave** — using a bidirectional
@@ -153,7 +153,7 @@ If you use BixECG, please cite the paper and the software (see `CITATION.cff`):
 
 > Lung D, Heute P, Marx M, Schlöglhofer T, Abart T, Moscato F, Riebandt J, Zimpfer D, Haberbusch M.
 > *A Compact, Uncertainty-Aware mLSTM Model for Real-Time ECG Delineation on Edge Devices.*
-> Expert Systems with Applications, 2026.
+> 2026. (Preprint; journal submission in preparation.)
 
 **Software archive:** [10.5281/zenodo.23194750](https://doi.org/10.5281/zenodo.23194750)
 (version DOI; resolves once the Zenodo deposition is published).

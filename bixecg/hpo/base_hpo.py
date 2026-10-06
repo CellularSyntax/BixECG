@@ -65,7 +65,7 @@ class BaseHPO:
         
         
 
-        batch_size = config["batch_size"]
+        batch_size = config['batch_size']
         writer = None
 
         while(batch_size > 8):
@@ -82,7 +82,7 @@ class BaseHPO:
                 run_name = self.get_run_name(config)
                 
                 start_timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                run_name = f"bs{config["batch_size"]}_{run_name}_{start_timestamp}"
+                run_name = f"bs{config['batch_size']}_{run_name}_{start_timestamp}"
                 run_name = run_name.replace(" ", "")
                 log_dir = os.path.join(
                     "./logs/runs", run_name + "_" +
@@ -141,7 +141,7 @@ class BaseHPO:
                 print(f"Validation sequences: {x_val_seq.shape[0]}")
 
                 # Class weights
-                class_weights = compute_class_weights(y_train_seq, config["model"]["params"]["num_classes"])
+                class_weights = compute_class_weights(y_train_seq, config['model']['params']["num_classes"])
                 class_weights[0] *= 2.0  # Adjust class weights for No Wave class
                 class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
 
@@ -191,7 +191,7 @@ class BaseHPO:
                     # Handle OOM error by reducing batch_size
                     old_batch_size = batch_size
                     batch_size = int(batch_size * config["batch_size_reduction_factor"])
-                    config["batch_size"] = batch_size
+                    config['batch_size'] = batch_size
                     print(f"❗️ OutOfMemoryError - retrying with a new batchsize of {batch_size} (was {old_batch_size})")
                     #print(str(traceback.format_exc()))
                 else:
