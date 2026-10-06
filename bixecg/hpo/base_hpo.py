@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 # from my_dataset import get_train_val_loaders  # <-- you should implement this
 # from my_model import MyModel  # <-- your model definition
 # from my_train_utils import train_one_epoch, evaluate_model  # <-- your custom training & eval functions
-from src.models.models import get_model
+from bixecg.models.models import get_model
 import traceback
 from torch.utils.tensorboard import SummaryWriter
 from torchinfo import summary
@@ -22,8 +22,8 @@ import random
 
 import time
 
-from src.utils.scheduler import WarmupCosineScheduler
-from src.utils.helper_fns import (
+from bixecg.utils.scheduler import WarmupCosineScheduler
+from bixecg.utils.helper_fns import (
     log_per_class_f1, extract_beat_aligned_sequences,
     z_normalize, load_ecg_data, filter_ecg,
     get_dataloaders, train_epoch, validate, write_hparams,
@@ -65,7 +65,7 @@ class BaseHPO:
         
         
 
-        batch_size = config["batch_size"]
+        batch_size = config['batch_size']
         writer = None
 
         while(batch_size > 8):
@@ -82,7 +82,7 @@ class BaseHPO:
                 run_name = self.get_run_name(config)
                 
                 start_timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                run_name = f"bs{config["batch_size"]}_{run_name}_{start_timestamp}"
+                run_name = f"bs{config['batch_size']}_{run_name}_{start_timestamp}"
                 run_name = run_name.replace(" ", "")
                 log_dir = os.path.join(
                     "./logs/runs", run_name + "_" +
@@ -141,7 +141,7 @@ class BaseHPO:
                 print(f"Validation sequences: {x_val_seq.shape[0]}")
 
                 # Class weights
-                class_weights = compute_class_weights(y_train_seq, config["model"]["params"]["num_classes"])
+                class_weights = compute_class_weights(y_train_seq, config['model']['params']["num_classes"])
                 class_weights[0] *= 2.0  # Adjust class weights for No Wave class
                 class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
 
@@ -191,7 +191,7 @@ class BaseHPO:
                     # Handle OOM error by reducing batch_size
                     old_batch_size = batch_size
                     batch_size = int(batch_size * config["batch_size_reduction_factor"])
-                    config["batch_size"] = batch_size
+                    config['batch_size'] = batch_size
                     print(f"❗️ OutOfMemoryError - retrying with a new batchsize of {batch_size} (was {old_batch_size})")
                     #print(str(traceback.format_exc()))
                 else:

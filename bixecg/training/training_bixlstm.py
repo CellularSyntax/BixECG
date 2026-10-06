@@ -14,9 +14,11 @@ from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.tensorboard import SummaryWriter
 from torchinfo import summary
 import json
-from src.utils.scheduler import WarmupCosineScheduler
+import math
+from bixecg.utils.scheduler import WarmupCosineScheduler
+from bixecg.models.models import get_model
 
-from src.utils.helper_fns import (
+from bixecg.utils.helper_fns import (
     log_per_class_f1, extract_beat_aligned_sequences,
     z_normalize, load_ecg_data, filter_ecg,
     get_dataloaders, train_epoch, validate, write_hparams,
@@ -26,13 +28,12 @@ from src.utils.helper_fns import (
     evaluate_macro_f1)
 
 def main(results_path="./res"):
-    config = json.load(open("conf/jimenezcnn1d.json", "r"))
-    # pretty print the config
-    print(json.dumps(config, indent=4))
+    config = json.load(open("conf/BiXLSTM1.json", "r"))
     config["SEQ_LEN"] = int(config["Fs"] * config["seq_dur"])
 
-    device = get_device(config)
+    results_path = os.path.join(results_path, config["model"]["name"])
 
+    device = get_device(config)
     # Data Loading and Preprocessing
     x_train_raw, y_train_raw, patient_id_train, lead_train, _, _, _, _ = load_ecg_data(config)
     x_train_filtered = filter_ecg(x_train_raw, config)
@@ -73,14 +74,14 @@ def main(results_path="./res"):
     print(f"Validation sequences: {x_val_seq.shape[0]}")
 
     # Class weights
-    class_weights = compute_class_weights(y_train_seq, config["model"]["params"]["num_classes"])
+    class_weights = compute_class_weights(y_train_seq, config['model']['params']["num_classes"])
     class_weights[0] *= 2.0  # Adjust class weights for No Wave class
     class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
 
     print(f"Class weights: {class_weights_tensor}")
 
     # Data Loaders
-    train_loader, val_loader = get_dataloaders(x_train_seq, y_train_seq, x_val_seq, y_val_seq, config["batch_size"])
+    train_loader, val_loader = get_dataloaders(x_train_seq, y_train_seq, x_val_seq, y_val_seq, config['batch_size'])
 
     # Model
     model = build_model(config).to(device)
@@ -108,17 +109,17 @@ def main(results_path="./res"):
     log_dir = os.path.join(base_dir, "logs", "runs", f"{run_name}_{timestamp}")
 
     # Create log directory if it doesn't exist
-    os.makedirs(log_dir, exist_ok=True)
+    os.makedirs(log_dir, exist_ok=True)    
     writer = SummaryWriter(log_dir)
 
     epochs_no_improve = 0
-    macrof1 = 0.0
+    macro_f1 = 0.0
 
     best_macro_f1 = 0.0 #asd
     epochs_no_improve = 0
 
     val_loss = 0.0 
-    best_model_name = None
+    best_model_path = None
 
     try:
         for epoch in range(config["epochs"]):
@@ -132,13 +133,13 @@ def main(results_path="./res"):
             print(f"                   Val Loss: {val_loss:.4f}")
             writer.add_scalar("Loss/val", val_loss, epoch)
 
-            # Log learning rate
+            # Log learning rates
             current_lr = optimizer.param_groups[0]['lr']
             writer.add_scalar("LR", current_lr, epoch)
             print(f"Current LR: {current_lr:.6f}")
 
             # === F1 evaluation every epoch ===
-            macro_f1 = evaluate_macro_f1(model, val_loader)
+            macro_f1 = evaluate_macro_f1(model, val_loader, device=device)
 
             writer.add_scalar("MacroF1/val", macro_f1, epoch)
             print(f"                   Macro F1: {macro_f1:.4f}")
@@ -156,7 +157,7 @@ def main(results_path="./res"):
             if macro_f1 > best_macro_f1:
                 best_macro_f1 = macro_f1
                 epochs_no_improve = 0
-                best_model_name = save_model_with_metadata(
+                best_model_path = save_model_with_metadata(
                         model=model,
                         config=config,
                         results_path=results_path,
@@ -165,7 +166,7 @@ def main(results_path="./res"):
                         train_loss=train_loss,
                         val_loss=val_loss,
                         current_lr=current_lr
-                )            
+                ) 
             else:
                 epochs_no_improve += 1
                 print(f"                   No improvement for {epochs_no_improve} epochs.")
@@ -181,15 +182,11 @@ def main(results_path="./res"):
         writer.close()
 
         writer = SummaryWriter(log_dir)
-        write_hparams(writer, config, val_loss=val_loss, macrof1=macrof1)
+        write_hparams(writer, config, val_loss=val_loss, macrof1=macro_f1)
         writer.close()
 
         # Load the best model for evaluation
-        if best_model_name is not None:
-            model.load_state_dict(torch.load(best_model_name))
-        else:
-            print("No best model saved. Skipping final model load.")
-
+        model.load_state_dict(torch.load(best_model_path))
         writer = SummaryWriter(log_dir)
 
         writer.close()

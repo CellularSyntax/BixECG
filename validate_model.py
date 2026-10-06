@@ -9,12 +9,12 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 
-from src.utils.helper_fns import (
+from bixecg.utils.helper_fns import (
     extract_sequences_simple, z_normalize,
     select_random_sequences
 )
 
-from src.utils.validation_helper_fns import (
+from bixecg.utils.validation_helper_fns import (
     apply_bandpass_filter, print_ascii_logo, 
     evluate_on_db, load_model, get_tolerance_map
 )
@@ -72,7 +72,7 @@ def main(model_name, data_dir="../DATA/ludb", filter_data=True, beat_aligned=Tru
     dataset = TensorDataset(x, y)
     loader = DataLoader(
         dataset,
-        batch_size=config["batch_size"],
+        batch_size=config['batch_size'],
         shuffle=False,
         num_workers=4,
         pin_memory=True

@@ -33,11 +33,11 @@ import torch.nn as nn
 import torch.nn.utils as nn_utils
 
 # Local imports
-from src.models.models import get_model
-from src.models.bixecg import BiXLSTM, xLSTM
-from src.models.jimenez_cnn import JimenezCNN1D
-from src.models.liu_cnn_bilstm import LiuCNNBilstm
-from src.models.peimankar_cnn_bilstm import PeimankarCnnBilstm
+from bixecg.models.models import get_model
+from bixecg.models.bixecg import BiXLSTM, xLSTM
+from bixecg.models.jimenez_cnn import JimenezCNN1D
+from bixecg.models.liu_cnn_bilstm import LiuCNNBilstm
+from bixecg.models.peimankar_cnn_bilstm import PeimankarCnnBilstm
 
 @contextlib.contextmanager
 def redirect_output_to_file(log_path="logs/build_log.txt"):
@@ -429,7 +429,7 @@ def get_device(config):
 
 def build_model(config):
     with redirect_output_to_file(): # Suppress output from the model initialization as it can be verbose
-        return get_model(config["model"]["name"], **config["model"]["params"])
+        return get_model(config["model"]["name"], **config['model']['params'])
     
 def train_epoch(model, loader, optimizer, loss_fn, device=None):
     model.train()
@@ -512,7 +512,7 @@ def write_hparams(writer, config, val_loss=0.0, macrof1=0.0):
     #         config[key] = "n/a"
 
     hparams = {
-        **config["model"]["params"],
+        **config['model']['params'],
         'seq_len': config['SEQ_LEN'],
         'batch_size': config['batch_size'],
         'initial_lr': config['initial_lr'],

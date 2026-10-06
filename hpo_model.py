@@ -2,15 +2,15 @@ import argparse
 import subprocess
 import sys
 
-#from src.utils.validation_helper_fns import print_ascii_logo
-import src.hpo as module_hpo
+#from bixecg.utils.validation_helper_fns import print_ascii_logo
+import bixecg.hpo as module_hpo
 
 def launch_hpo(model_name):
     script_map = {
         "peimankar": ["PeimankarHPO", "conf/peimankarcnnbilstm.json"],
         "bixlstm": ["BiXLSTMHPO", "conf/BiXLSTM1.json"],
-        #"jimenez": "src.hpo.hpo_jimenezcnn1d",
-        #"liue": "src.hpo.hpo_liuecnnbilstm",
+        #"jimenez": "bixecg.hpo.hpo_jimenezcnn1d",
+        #"liue": "bixecg.hpo.hpo_liuecnnbilstm",
     }
 
     model_key = model_name.strip().lower()

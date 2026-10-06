@@ -4,7 +4,7 @@ import torch
 import warnings
 import json
 
-from src.hpo.base_hpo import BaseHPO
+from bixecg.hpo.base_hpo import BaseHPO
 
 
 class BiXLSTMHPO(BaseHPO):
@@ -27,7 +27,7 @@ class BiXLSTMHPO(BaseHPO):
                 possible_slstm_at_options.extend(itertools.combinations(max_positions, k))
             possible_slstm_at_options = [*map(list, possible_slstm_at_options)]
             for possible_positions in possible_slstm_at_options:
-                key = f"{num_blocks}_{"".join([str(at) for at in possible_positions])}"
+                key = f"{num_blocks}_{''.join([str(at) for at in possible_positions])}"
                 val = [num_blocks, possible_positions]
                 num_block_slstm_at_dict[key] = val
 
@@ -42,23 +42,23 @@ class BiXLSTMHPO(BaseHPO):
         # # warning can be ignored.
         with warnings.catch_warnings(action="ignore"):
             num_blocks, slstm_at = trial.suggest_categorical("num_blocks_slstm_at", num_block_slstm_at_choices)
-            config["model"]["params"]["num_blocks"] = num_blocks
-            config["model"]["params"]["slstm_at"] = slstm_at
+            config['model']['params']["num_blocks"] = num_blocks
+            config['model']['params']["slstm_at"] = slstm_at
         
 
         ## the performance also changes with a different batchsize
         ## could use max batch_size suggestion and reduce if needed
         #batch_size = trial.suggest_categorical('batch_size', [64, 128, 256, 512])
-        #config["batch_size"] = batch_size
+        #config['batch_size'] = batch_size
         
         # Now suggest other hyperparameters
         dropout = trial.suggest_float('dropout', 0.1, 0.5, step=0.05)
         dropout = float("{:.2f}".format(dropout))
-        config["model"]["params"]["dropout"] = dropout
+        config['model']['params']["dropout"] = dropout
         #embedding_dim = trial.suggest_categorical('embedding_dim', [12, 16, 20, 24, 28, 32, 36, 40, 48, 64, 80, 100])
-        config["model"]["params"]["embedding_dim"] = trial.suggest_int('embedding_dim', 8, 40, step=4)
-        #config["model"]["params"]["conv1d_kernel_size"] = trial.suggest_categorical('conv1d_kernel_size', [3, 7, 11, 21, 31, 41, 51, 61, 71])
-        config["model"]["params"]["conv1d_kernel_size"] = trial.suggest_categorical('conv1d_kernel_size', [11, 21, 31, 41, 51, 61])
+        config['model']['params']["embedding_dim"] = trial.suggest_int('embedding_dim', 8, 40, step=4)
+        #config['model']['params']["conv1d_kernel_size"] = trial.suggest_categorical('conv1d_kernel_size', [3, 7, 11, 21, 31, 41, 51, 61, 71])
+        config['model']['params']["conv1d_kernel_size"] = trial.suggest_categorical('conv1d_kernel_size', [11, 21, 31, 41, 51, 61])
         #conv1d_kernel_size = trial.suggest_int('conv1d_kernel_size', 11, 71, step=10)
 
         seq_dur = config["seq_dur"]
@@ -66,13 +66,13 @@ class BiXLSTMHPO(BaseHPO):
         seq_dur = float("{:.2f}".format(seq_dur))
         config["seq_dur"] = seq_dur
 
-        #config["model"]["params"]["sequence_length"] = trial.suggest_categorical('sequence_length', [100, 200, 300])
+        #config['model']['params']["sequence_length"] = trial.suggest_categorical('sequence_length', [100, 200, 300])
         
         config["SEQ_LEN"] = int(config["Fs"] * seq_dur)
 
         print(f"seq_dur: {seq_dur}, Fs: {config['Fs']}, SEQ_LEN: {config['SEQ_LEN']}")
 
-        config["model"]["params"]["seq_length"] = int(config["Fs"] * seq_dur)
+        config['model']['params']["seq_length"] = int(config["Fs"] * seq_dur)
 
         
 

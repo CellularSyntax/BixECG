@@ -1,0 +1,60 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite both the software and the paper."
+title: "BixECG: A Compact, Uncertainty-Aware mLSTM Model for Real-Time ECG Delineation on Edge Devices"
+type: software
+version: 1.0.0
+license: GPL-2.0-only
+repository-code: "https://github.com/CellularSyntax/BixECG"
+authors:
+  - given-names: David
+    family-names: Lung
+    affiliation: "Medical University of Vienna"
+  - given-names: Philipp
+    family-names: Heute
+    affiliation: "Medical University of Vienna"
+  - given-names: Manfred
+    family-names: Marx
+    affiliation: "Medical University of Vienna"
+  - given-names: Thomas
+    family-names: Schlöglhofer
+    affiliation: "Medical University of Vienna"
+  - given-names: Theodor
+    family-names: Abart
+    affiliation: "Medical University of Vienna"
+  - given-names: Francesco
+    family-names: Moscato
+    affiliation: "Medical University of Vienna"
+  - given-names: Julia
+    family-names: Riebandt
+    affiliation: "Medical University of Vienna"
+  - given-names: Daniel
+    family-names: Zimpfer
+    affiliation: "Medical University of Vienna"
+  - given-names: Max
+    family-names: Haberbusch
+    affiliation: "Medical University of Vienna"
+    email: max.haberbusch@meduniwien.ac.at
+preferred-citation:
+  type: generic
+  title: "A Compact, Uncertainty-Aware mLSTM Model for Real-Time ECG Delineation on Edge Devices"
+  year: 2026
+  notes: "Preprint; journal submission in preparation."
+  authors:
+    - given-names: David
+      family-names: Lung
+    - given-names: Philipp
+      family-names: Heute
+    - given-names: Manfred
+      family-names: Marx
+    - given-names: Thomas
+      family-names: Schlöglhofer
+    - given-names: Theodor
+      family-names: Abart
+    - given-names: Francesco
+      family-names: Moscato
+    - given-names: Julia
+      family-names: Riebandt
+    - given-names: Daniel
+      family-names: Zimpfer
+    - given-names: Max
+      family-names: Haberbusch

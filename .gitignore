@@ -4,3 +4,9 @@ logs/
 .DS_Store
 .venv
 results
+# tooling caches / build
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+__pycache__/

@@ -8,15 +8,15 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 from torchinfo import summary
 
-from src.utils.helper_fns import (
+from bixecg.utils.helper_fns import (
     log_per_class_f1, extract_beat_aligned_sequences, z_normalize,
     load_ecg_data, filter_ecg, get_dataloaders, train_epoch,
     validate, write_hparams, compute_class_weights,
     split_train_val_by_patient, get_exclude_sequence_ids, get_device,
     evaluate_macro_f1, save_model_with_metadata, build_model
 )
-from src.models.liu_cnn_bilstm import LiuCNNBilstm
-from src.utils.scheduler import WarmupCosineScheduler
+from bixecg.models.liu_cnn_bilstm import LiuCNNBilstm
+from bixecg.utils.scheduler import WarmupCosineScheduler
 
 def main(results_path="./res"):
     config_path = "conf/liuecnnbilstm.json"
@@ -51,13 +51,13 @@ def main(results_path="./res"):
     print(f"Train sequences: {x_train.shape[0]}")
     print(f"Validation sequences: {x_val.shape[0]}")
 
-    class_weights = compute_class_weights(y_train, config["model"]["params"]["num_classes"])
+    class_weights = compute_class_weights(y_train, config['model']['params']["num_classes"])
     class_weights[0] *= 2.0
     class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
     print(f"Class weights: {class_weights_tensor}")
 
     train_loader, val_loader = get_dataloaders(
-        x_train, y_train, x_val, y_val, config["batch_size"]
+        x_train, y_train, x_val, y_val, config['batch_size']
     )
 
     # === Build model ===

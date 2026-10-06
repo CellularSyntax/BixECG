@@ -22,8 +22,8 @@ from sklearn.preprocessing import label_binarize
 from sklearn.metrics import (classification_report, ConfusionMatrixDisplay,
                                  roc_curve, auc, cohen_kappa_score)
 
-from src.utils.helper_fns import (plot_sequence_shaded, build_model, apply_classwise_tolerance_matching)
-from src.utils.helper_fns import get_device
+from bixecg.utils.helper_fns import (plot_sequence_shaded, build_model, apply_classwise_tolerance_matching)
+from bixecg.utils.helper_fns import get_device
 
 def get_tolerance_map():
     return {

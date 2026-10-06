@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 # from my_dataset import get_train_val_loaders  # <-- you should implement this
 # from my_model import MyModel  # <-- your model definition
 # from my_train_utils import train_one_epoch, evaluate_model  # <-- your custom training & eval functions
-from src.models.models import get_model
+from bixecg.models.models import get_model
 import traceback
 
 from torch.utils.tensorboard import SummaryWriter
@@ -21,8 +21,8 @@ import warnings
 
 torch.autograd.set_detect_anomaly(True)
 
-from src.utils.scheduler import WarmupCosineScheduler
-from src.utils.helper_fns import (
+from bixecg.utils.scheduler import WarmupCosineScheduler
+from bixecg.utils.helper_fns import (
     log_per_class_f1, extract_beat_aligned_sequences,
     z_normalize, load_ecg_data, filter_ecg,
     get_dataloaders, train_epoch, validate, write_hparams,
@@ -35,14 +35,14 @@ from src.utils.helper_fns import (
 def objective(trial: optuna.Trial, config:dict, results_path):
 
     kernel_sizes = trial.suggest_categorical('kernel_sizes', [3, 11, 31, 51])
-    config["model"]["params"]["kernel_sizes"] = [kernel_sizes] * 3
+    config['model']['params']["kernel_sizes"] = [kernel_sizes] * 3
 
     lstm_hidden_sizes = trial.suggest_categorical('lstm_hidden_sizes', [250, 200, 100, 50])
     #lstm_hidden_sizes = 250
-    config["model"]["params"]["lstm_hidden_sizes"] = [int(lstm_hidden_sizes), int(lstm_hidden_sizes/2)]
+    config['model']['params']["lstm_hidden_sizes"] = [int(lstm_hidden_sizes), int(lstm_hidden_sizes/2)]
     
     dropout = trial.suggest_float('dropout', 0.1, 0.5, step=0.05)
-    config["model"]["params"]["dropouts"] = [float("{:.2f}".format(dropout))] * 2
+    config['model']['params']["dropouts"] = [float("{:.2f}".format(dropout))] * 2
     
 
     config["SEQ_LEN"] = int(config["Fs"] * config["seq_dur"])
@@ -97,13 +97,13 @@ def init_and_run(trial, config, results_path):
     print(f"Validation sequences: {x_val_seq.shape[0]}")
 
     # Class weights
-    class_weights = compute_class_weights(y_train_seq, config["model"]["params"]["num_classes"])
+    class_weights = compute_class_weights(y_train_seq, config['model']['params']["num_classes"])
     class_weights[0] *= 2.0  # Adjust class weights for No Wave class
     class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
 
     print(f"Class weights: {class_weights_tensor}")
 
-    batch_size = config["batch_size"]
+    batch_size = config['batch_size']
 
     while(batch_size > 8):
         try:
@@ -177,10 +177,10 @@ def run(trial,
     best_model_path = None
 
     # TensorBoard logging setup
-    run_name = (f"ks{config["model"]["params"]['kernel_sizes']}_"
-                f"hidden{config["model"]["params"]['lstm_hidden_sizes']}_do{config["model"]["params"]['dropouts']}")
+    run_name = (f"ks{config['model']['params']['kernel_sizes']}_"
+                f"hidden{config['model']['params']['lstm_hidden_sizes']}_do{config['model']['params']['dropouts']}")
     log_dir = os.path.join(
-        f"logs/runs/{config["model"]["name"]}", run_name + "_" +
+        f"logs/runs/{config['model']['name']}", run_name + "_" +
         datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     )
     writer = SummaryWriter(log_dir)

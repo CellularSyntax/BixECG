@@ -1,0 +1,55 @@
+{
+  "title": "BixECG: A Compact, Uncertainty-Aware mLSTM Model for Real-Time ECG Delineation on Edge Devices",
+  "upload_type": "software",
+  "description": "Official code for the paper \"A Compact, Uncertainty-Aware mLSTM Model for Real-Time ECG Delineation on Edge Devices\" (Lung et al., 2026; preprint). BixECG is a ~2,500-parameter bidirectional matrix-memory LSTM (Bi-mLSTM) for per-sample P/QRS/T/No-Wave delineation, with tolerance-aware evaluation, uncertainty quantification (softmax confidence, entropy, calibration), and a real-time on-device deployment (Arduino Portenta H7, Cortex-M7) streaming from a wearable ECG monitor.",
+  "license": "GPL-2.0-only",
+  "access_right": "open",
+  "creators": [
+    {
+      "name": "Lung, David",
+      "affiliation": "Medical University of Vienna"
+    },
+    {
+      "name": "Heute, Philipp",
+      "affiliation": "Medical University of Vienna"
+    },
+    {
+      "name": "Marx, Manfred",
+      "affiliation": "Medical University of Vienna"
+    },
+    {
+      "name": "Schlöglhofer, Thomas",
+      "affiliation": "Medical University of Vienna"
+    },
+    {
+      "name": "Abart, Theodor",
+      "affiliation": "Medical University of Vienna"
+    },
+    {
+      "name": "Moscato, Francesco",
+      "affiliation": "Medical University of Vienna"
+    },
+    {
+      "name": "Riebandt, Julia",
+      "affiliation": "Medical University of Vienna"
+    },
+    {
+      "name": "Zimpfer, Daniel",
+      "affiliation": "Medical University of Vienna"
+    },
+    {
+      "name": "Haberbusch, Max",
+      "affiliation": "Medical University of Vienna"
+    }
+  ],
+  "keywords": [
+    "ECG",
+    "electrocardiogram",
+    "waveform delineation",
+    "mLSTM",
+    "xLSTM",
+    "edge computing",
+    "uncertainty quantification",
+    "deep learning"
+  ]
+}

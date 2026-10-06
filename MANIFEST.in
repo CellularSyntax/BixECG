@@ -1,0 +1,5 @@
+include LICENSE README.md CITATION.cff requirements.txt requirements_new.txt
+include .zenodo.json
+recursive-include conf *.json
+prune android_app
+exclude img/bixecg_logo.png
