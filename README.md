@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/CellularSyntax/BixECG/actions/workflows/ci.yml/badge.svg)](https://github.com/CellularSyntax/BixECG/actions/workflows/ci.yml)
 [![License: GPL v2](https://img.shields.io/badge/License-GPLv2-blue.svg)](LICENSE)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23194750.svg)](https://doi.org/10.5281/zenodo.23194750)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23196330.svg)](https://doi.org/10.5281/zenodo.23196330)
 
 ---
 
@@ -143,7 +143,7 @@ If you use BixECG, please cite the paper and the software (see `CITATION.cff`):
 > *A Compact, Uncertainty-Aware mLSTM Model for Real-Time ECG Delineation on Edge Devices.*
 > 2026. (Preprint; journal submission in preparation.)
 
-**Software archive:** [10.5281/zenodo.23194750](https://doi.org/10.5281/zenodo.23194750)
+**Software archive:** [10.5281/zenodo.23196330](https://doi.org/10.5281/zenodo.23196330)
 (version DOI; resolves once the Zenodo deposition is published).
 
 ---
