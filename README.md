@@ -102,7 +102,7 @@ windows are set in the `conf/*.json` files.
 The selected **2,522-parameter Bi-mLSTM** weights (the model reported in the paper) are
 published on Hugging Face:
 
-<!-- TODO: insert Hugging Face model URL once published -->
+**https://huggingface.co/maxhaberbusch/BixECG**
 
 ```python
 import torch
