@@ -43,7 +43,6 @@ single-lead ECG as **No-Wave (NW), P-wave, QRS-complex, or T-wave** — using a 
 | `train_model.py` | Training launcher |
 | `hpo_model.py` | Hyperparameter-optimization launcher |
 | `validate_model.py` | Evaluation launcher (metrics, calibration, uncertainty, plots) |
-| `android_app/` | Real-time Android deployment app (on-device inference) |
 | `img/` | Logo and assets |
 
 ---
@@ -117,10 +116,6 @@ model.load_state_dict(sd.get("model_state_dict", sd))
 model.eval()
 ```
 
-> **Note:** the model bundled in `android_app/` is a separate, earlier traced export used
-> during app development and does **not** correspond to the 2,522-parameter model reported in
-> the paper. Use the Hugging Face weights above for the published model.
-
 ---
 
 ## Datasets
@@ -137,13 +132,6 @@ model.eval()
 > **not** included in this repository, the release archive, or the Hugging Face model. They
 > are available from the corresponding author on reasonable request. QTDB and LUDB are public
 > and are **not** redistributed here — download them from PhysioNet.
-
----
-
-## Android application
-
-`android_app/` contains the real-time on-device ECG delineation app (PyTorch Mobile),
-which streams ECG over BLE and runs inference directly on the edge device.
 
 ---
 
