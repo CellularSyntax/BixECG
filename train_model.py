@@ -2,14 +2,14 @@ import argparse
 import subprocess
 import sys
 
-from src.utils.validation_helper_fns import print_ascii_logo
+from bixecg.utils.validation_helper_fns import print_ascii_logo
 
 def launch_training(model_name):
     script_map = {
-        "peimankar": "src.training.training_peimankarcnnbilstm",
-        "bixlstm": "src.training.training_bixlstm",
-        "jimenez": "src.training.training_jimenezcnn1d",
-        "liue": "src.training.training_liuecnnbilstm",
+        "peimankar": "bixecg.training.training_peimankarcnnbilstm",
+        "bixlstm": "bixecg.training.training_bixlstm",
+        "jimenez": "bixecg.training.training_jimenezcnn1d",
+        "liue": "bixecg.training.training_liuecnnbilstm",
     }
 
     model_key = model_name.strip().lower()

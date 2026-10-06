@@ -33,11 +33,11 @@ import torch.nn as nn
 import torch.nn.utils as nn_utils
 
 # Local imports
-from src.models.models import get_model
-from src.models.bixecg import BiXLSTM, xLSTM
-from src.models.jimenez_cnn import JimenezCNN1D
-from src.models.liu_cnn_bilstm import LiuCNNBilstm
-from src.models.peimankar_cnn_bilstm import PeimankarCnnBilstm
+from bixecg.models.models import get_model
+from bixecg.models.bixecg import BiXLSTM, xLSTM
+from bixecg.models.jimenez_cnn import JimenezCNN1D
+from bixecg.models.liu_cnn_bilstm import LiuCNNBilstm
+from bixecg.models.peimankar_cnn_bilstm import PeimankarCnnBilstm
 
 @contextlib.contextmanager
 def redirect_output_to_file(log_path="logs/build_log.txt"):

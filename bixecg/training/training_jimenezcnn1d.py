@@ -14,9 +14,9 @@ from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.tensorboard import SummaryWriter
 from torchinfo import summary
 import json
-from src.utils.scheduler import WarmupCosineScheduler
+from bixecg.utils.scheduler import WarmupCosineScheduler
 
-from src.utils.helper_fns import (
+from bixecg.utils.helper_fns import (
     log_per_class_f1, extract_beat_aligned_sequences,
     z_normalize, load_ecg_data, filter_ecg,
     get_dataloaders, train_epoch, validate, write_hparams,

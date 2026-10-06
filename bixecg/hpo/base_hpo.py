@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 # from my_dataset import get_train_val_loaders  # <-- you should implement this
 # from my_model import MyModel  # <-- your model definition
 # from my_train_utils import train_one_epoch, evaluate_model  # <-- your custom training & eval functions
-from src.models.models import get_model
+from bixecg.models.models import get_model
 import traceback
 from torch.utils.tensorboard import SummaryWriter
 from torchinfo import summary
@@ -22,8 +22,8 @@ import random
 
 import time
 
-from src.utils.scheduler import WarmupCosineScheduler
-from src.utils.helper_fns import (
+from bixecg.utils.scheduler import WarmupCosineScheduler
+from bixecg.utils.helper_fns import (
     log_per_class_f1, extract_beat_aligned_sequences,
     z_normalize, load_ecg_data, filter_ecg,
     get_dataloaders, train_epoch, validate, write_hparams,

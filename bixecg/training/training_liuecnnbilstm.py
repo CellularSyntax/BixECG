@@ -4,21 +4,22 @@ import datetime
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 from torchinfo import summary
 
-from src.utils.helper_fns import (
+from bixecg.utils.helper_fns import (
     log_per_class_f1, extract_beat_aligned_sequences, z_normalize,
     load_ecg_data, filter_ecg, get_dataloaders, train_epoch,
-    validate, write_hparams, compute_class_weights, get_device,
-    split_train_val_by_patient, get_exclude_sequence_ids,
+    validate, write_hparams, compute_class_weights,
+    split_train_val_by_patient, get_exclude_sequence_ids, get_device,
     evaluate_macro_f1, save_model_with_metadata, build_model
 )
-from src.models.peimankar_cnn_bilstm import PeimankarCnnBilstm
-from src.utils.scheduler import WarmupCosineScheduler
+from bixecg.models.liu_cnn_bilstm import LiuCNNBilstm
+from bixecg.utils.scheduler import WarmupCosineScheduler
 
 def main(results_path="./res"):
-    config_path = "conf/peimankarcnnbilstm.json"
+    config_path = "conf/liuecnnbilstm.json"
     with open(config_path, "r") as f:
         config = json.load(f)
 
@@ -84,7 +85,7 @@ def main(results_path="./res"):
     log_dir = os.path.join(base_dir, "logs", "runs", f"{run_name}_{timestamp}")
 
     # Create log directory if it doesn't exist
-    os.makedirs(log_dir, exist_ok=True)   
+    os.makedirs(log_dir, exist_ok=True)
     writer = SummaryWriter(log_dir)
 
     best_macro_f1 = 0.0
@@ -119,14 +120,14 @@ def main(results_path="./res"):
                 best_macro_f1 = macro_f1
                 epochs_no_improve = 0
                 best_model_name = save_model_with_metadata(
-                        model=model,
-                        config=config,
-                        results_path=results_path,
-                        best_macro_f1=best_macro_f1,
-                        epoch=epoch,
-                        train_loss=train_loss,
-                        val_loss=val_loss,
-                        current_lr=current_lr
+                    model=model,
+                    config=config,
+                    results_path=results_path,
+                    best_macro_f1=best_macro_f1,
+                    epoch=epoch,
+                    train_loss=train_loss,
+                    val_loss=val_loss,
+                    current_lr=current_lr
                 )
             else:
                 epochs_no_improve += 1

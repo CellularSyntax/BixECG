@@ -4,7 +4,7 @@ import torch
 import warnings
 import json
 
-from src.hpo.base_hpo import BaseHPO
+from bixecg.hpo.base_hpo import BaseHPO
 
 
 class PeimankarHPO(BaseHPO):
