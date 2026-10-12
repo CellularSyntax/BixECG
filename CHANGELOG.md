@@ -31,6 +31,9 @@ Archived releases: concept DOI [10.5281/zenodo.23196330](https://doi.org/10.5281
   loading example (the v1.0.0 snippet did not run: `get_model` takes a model name plus keyword
   arguments, and `BimLSTM` cannot be built with those arguments under `xlstm==2.0.3`; the published
   `state_dict` loads strictly into `BixECGNet`).
+- **Minimum Python is now 3.11.** The pinned `xlstm==2.0.3` depends on `mlstm_kernels`, which requires
+  Python ≥ 3.11, so the package's dependencies were never installable on 3.10 (v1.0.0 CI only smoke-imported
+  the wheel with `--no-deps`). `requires-python`, classifiers and the CI matrix now say 3.11–3.12.
 - Version 1.1.0 in `pyproject.toml`, `bixecg.__version__`, `CITATION.cff` and `.zenodo.json`; paper status
   stated as "under review".
 

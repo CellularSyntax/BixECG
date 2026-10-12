@@ -7,7 +7,7 @@ name = "bixecg"
 version = "1.1.0"
 description = "Compact, uncertainty-aware Bi-mLSTM model for real-time ECG waveform delineation on edge devices"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
     { name = "David Lung" },
@@ -40,7 +40,6 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
@@ -88,7 +87,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 # Keep CI lint advisory-friendly for a research codebase: syntax/runtime errors only.

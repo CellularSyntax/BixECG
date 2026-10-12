@@ -57,7 +57,7 @@ single-lead ECG as **No-Wave (NW), P-wave, QRS-complex, or T-wave** — using a 
 
 ## Installation
 
-BixECG is a Python package (Python ≥ 3.10).
+BixECG is a Python package (Python ≥ 3.11; required by `xlstm`'s `mlstm_kernels` dependency).
 
 ```bash
 # as a package (recommended)
