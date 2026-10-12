@@ -3,6 +3,7 @@ from .jimenez_cnn import JimenezCNN1D
 from .peimankar_cnn_bilstm import PeimankarCnnBilstm
 from .liu_cnn_bilstm import LiuCNNBilstm
 from .BiXLSTMClassifierFusion import BiXLSTMClassifierFusion
+from .bixecg_net import BixECGNet
 
 def get_model(name: str, **kwargs):
     """
@@ -14,6 +15,7 @@ def get_model(name: str, **kwargs):
             - 'xlstm'
             - 'lightecgnet'
             - 'jimenezcnn1d'
+            - 'bixecgnet' (published 2,522-parameter model; see bixecg.pretrained)
         kwargs: Keyword arguments passed to the model constructor.
 
     Returns:
@@ -35,7 +37,8 @@ def get_model(name: str, **kwargs):
         "liuecnnbilstm": LiuCNNBilstm,
         "jimenezcnn1d": JimenezCNN1D,
         "peimankarcnnbilstm": PeimankarCnnBilstm,
-        "bixlstmfusion": BiXLSTMClassifierFusion
+        "bixlstmfusion": BiXLSTMClassifierFusion,
+        "bixecgnet": BixECGNet,  # architecture of the published 2,522-param weights
     }
 
     if name not in model_registry:

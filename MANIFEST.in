@@ -1,5 +1,10 @@
 include LICENSE README.md CITATION.cff requirements.txt requirements_new.txt
 include .zenodo.json
 recursive-include conf *.json
+recursive-include bixecg/weights *.pt
+include CHANGELOG.md
+recursive-include deployment *.h *.bin *.json *.py *.md
+recursive-include scripts *.py
+recursive-include tests *.py
 prune android_app
 exclude img/bixecg_logo.png

@@ -1,7 +1,7 @@
 {
   "title": "BixECG: A Compact, Uncertainty-Aware mLSTM Model for Real-Time ECG Delineation on Edge Devices",
   "upload_type": "software",
-  "description": "Official code for the paper \"A Compact, Uncertainty-Aware mLSTM Model for Real-Time ECG Delineation on Edge Devices\" (Lung et al., 2026; preprint). BixECG is a ~2,500-parameter bidirectional matrix-memory LSTM (Bi-mLSTM) for per-sample P/QRS/T/No-Wave delineation, with tolerance-aware evaluation, uncertainty quantification (softmax confidence, entropy, calibration), and a real-time on-device deployment (Arduino Portenta H7, Cortex-M7) streaming from a wearable ECG monitor.",
+  "description": "Official code and pretrained weights for the paper \"A Compact, Uncertainty-Aware mLSTM Model for Real-Time ECG Delineation on Edge Devices\" (Lung et al., 2026; manuscript under review). BixECG is a 2,522-parameter bidirectional matrix-memory LSTM (Bi-mLSTM) for per-sample P/QRS/T/No-Wave delineation, with tolerance-aware evaluation, uncertainty quantification (softmax confidence, entropy, calibration), and a real-time on-device deployment (Arduino Portenta H7, Cortex-M7) streaming from a wearable ECG monitor. Version 1.1.0 makes the FINAL weights reported in the paper the default (bixecg_mlstm_2522_detaug.pt: detector-anchored training windows + augmentation; tolerance-aware macro-F1 under detector-anchored evaluation 0.921 on LUDB and 0.878 on LVAD-DB pooled across two raters) and keeps the earlier pilot-firmware weights (bixecg_mlstm_2522.pt: annotation-anchored, no augmentation; deployed in the on-device pilot reported in the paper) as a second, labelled weight set. It adds the firmware-format export of the final weights and the detector-anchored training/evaluation script. No patient data are included.",
   "license": "GPL-2.0-only",
   "access_right": "open",
   "creators": [
@@ -50,6 +50,21 @@
     "xLSTM",
     "edge computing",
     "uncertainty quantification",
-    "deep learning"
+    "deep learning",
+    "Pan-Tompkins",
+    "Arduino Portenta H7"
+  ],
+  "version": "1.1.0",
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/CellularSyntax/BixECG/tree/v1.1.0",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://huggingface.co/maxhaberbusch/BixECG",
+      "relation": "isSupplementedBy",
+      "scheme": "url"
+    }
   ]
 }

@@ -2,7 +2,13 @@ cff-version: 1.2.0
 message: "If you use this software, please cite both the software and the paper."
 title: "BixECG: A Compact, Uncertainty-Aware mLSTM Model for Real-Time ECG Delineation on Edge Devices"
 type: software
-version: 1.0.0
+version: 1.1.0
+date-released: "2026-10-12"
+doi: 10.5281/zenodo.23196330
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23196330
+    description: "Concept DOI (all versions; resolves to the latest)"
 license: GPL-2.0-only
 repository-code: "https://github.com/CellularSyntax/BixECG"
 authors:
@@ -38,7 +44,7 @@ preferred-citation:
   type: generic
   title: "A Compact, Uncertainty-Aware mLSTM Model for Real-Time ECG Delineation on Edge Devices"
   year: 2026
-  notes: "Preprint; journal submission in preparation."
+  notes: "Manuscript under review."
   authors:
     - given-names: David
       family-names: Lung

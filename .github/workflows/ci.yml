@@ -41,7 +41,9 @@ jobs:
       - name: Smoke-import the built wheel
         run: |
           python -m pip install --no-deps dist/*.whl
+          cd "$RUNNER_TEMP"   # import the installed wheel, not the checkout
           python -c "import bixecg; print('bixecg', bixecg.__version__)"
+          python -c "from importlib.resources import files; w = files('bixecg') / 'weights'; assert (w / 'bixecg_mlstm_2522_detaug.pt').is_file() and (w / 'bixecg_mlstm_2522.pt').is_file(); print('bundled weights OK')"
 
       - name: Upload build artifacts
         if: matrix.python-version == '3.11'
@@ -49,3 +51,29 @@ jobs:
         with:
           name: bixecg-dist
           path: dist/*
+
+  test:
+    name: Tests (pretrained weights smoke test, py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install CPU PyTorch
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install package
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run tests
+        run: python -m pytest -q

@@ -1,0 +1,629 @@
+{
+ "source_checkpoint": "model_train_aug.pt",
+ "format": "flat little-endian float32, tensors concatenated in PyTorch state_dict order (row-major / C order)",
+ "dims": {
+  "BIXECG_DIM": 8,
+  "BIXECG_INNER_DIM": 16,
+  "BIXECG_HEADS": 1,
+  "BIXECG_HEAD_DIM": 16,
+  "BIXECG_N_BLOCKS": 3,
+  "BIXECG_CONV_K": 11,
+  "BIXECG_SEQ_LEN": 300,
+  "BIXECG_NUM_CLASSES": 4,
+  "BIXECG_QKV_HEADS": 8,
+  "BIXECG_QKV_BLOCK": 2
+ },
+ "n_params": 2522,
+ "sha256_bin": "51f1bad43263e57ed8c7bba4e3e3b27ebd87e440b7da5a52516e091a61036c70",
+ "notes": [
+  "LayerNorm / MultiHeadLayerNorm gains are stored RAW as in the state_dict; xlstm uses residual weights: effective gain = 1 + weight (bias=False, eps=1e-5).",
+  "conv1d is depthwise causal: y[t] = b[c] + sum_{j<K} w[c,0,j] * x[t-(K-1)+j] (zero history).",
+  "q/k/v_proj weights are block-diagonal (LinearHeadwiseExpand): shape (QKV_HEADS=8, 2, 2), out[h*2+o] = sum_d W[h,o,d] * in[h*2+d].",
+  "mLSTM cell: igate/fgate Linear(48 -> NH) over concat(q,k,v); recurrent stabilised form with eps=1e-6; key scaled by 1/sqrt(HEAD_DIM).",
+  "Bidirectional: the SAME stack is run forward and on the time-reversed sequence; concat(fwd,bwd) -> output_proj -> 4 logits."
+ ],
+ "tensors": [
+  {
+   "name": "input_proj.weight",
+   "c_name": "input_proj_weight",
+   "shape": [
+    8,
+    1
+   ],
+   "dtype": "float32",
+   "offset_elems": 0,
+   "offset_bytes": 0,
+   "numel": 8,
+   "sha256": "572f70065dad348293002163c34450ca90a8504659ecec4ea9173a92deae3789"
+  },
+  {
+   "name": "input_proj.bias",
+   "c_name": "input_proj_bias",
+   "shape": [
+    8
+   ],
+   "dtype": "float32",
+   "offset_elems": 8,
+   "offset_bytes": 32,
+   "numel": 8,
+   "sha256": "a748aa0f0c9868b435a8d15c6400550884dd6bc3a9f5674e0a1c26a4b2ba14b1"
+  },
+  {
+   "name": "xlstm_stack.blocks.0.xlstm_norm.weight",
+   "c_name": "xlstm_stack_blocks_0_xlstm_norm_weight",
+   "shape": [
+    8
+   ],
+   "dtype": "float32",
+   "offset_elems": 16,
+   "offset_bytes": 64,
+   "numel": 8,
+   "sha256": "a288a04232f321cfe2dcce035feebaaa33d402b8e3ecf2208c4ebd8ac51c7404"
+  },
+  {
+   "name": "xlstm_stack.blocks.0.xlstm.learnable_skip",
+   "c_name": "xlstm_stack_blocks_0_xlstm_learnable_skip",
+   "shape": [
+    16
+   ],
+   "dtype": "float32",
+   "offset_elems": 24,
+   "offset_bytes": 96,
+   "numel": 16,
+   "sha256": "180f0754a79da95cc4409c2bcba6cc1190bdb8df519762be215f336b43714744"
+  },
+  {
+   "name": "xlstm_stack.blocks.0.xlstm.proj_up.weight",
+   "c_name": "xlstm_stack_blocks_0_xlstm_proj_up_weight",
+   "shape": [
+    32,
+    8
+   ],
+   "dtype": "float32",
+   "offset_elems": 40,
+   "offset_bytes": 160,
+   "numel": 256,
+   "sha256": "1c0c58afce3b136f22d74bfef7f22b50ad2b3834dcd7a53d846d79d153e7f374"
+  },
+  {
+   "name": "xlstm_stack.blocks.0.xlstm.q_proj.weight",
+   "c_name": "xlstm_stack_blocks_0_xlstm_q_proj_weight",
+   "shape": [
+    8,
+    2,
+    2
+   ],
+   "dtype": "float32",
+   "offset_elems": 296,
+   "offset_bytes": 1184,
+   "numel": 32,
+   "sha256": "e043908dc3688758ece7ae952330f3700c871c5fc725ab66ae85c60e525a93b6"
+  },
+  {
+   "name": "xlstm_stack.blocks.0.xlstm.k_proj.weight",
+   "c_name": "xlstm_stack_blocks_0_xlstm_k_proj_weight",
+   "shape": [
+    8,
+    2,
+    2
+   ],
+   "dtype": "float32",
+   "offset_elems": 328,
+   "offset_bytes": 1312,
+   "numel": 32,
+   "sha256": "de82f26d0714010d98c64fd7e987e9c5a6112164a0b50fdad58fad45539a7c0d"
+  },
+  {
+   "name": "xlstm_stack.blocks.0.xlstm.v_proj.weight",
+   "c_name": "xlstm_stack_blocks_0_xlstm_v_proj_weight",
+   "shape": [
+    8,
+    2,
+    2
+   ],
+   "dtype": "float32",
+   "offset_elems": 360,
+   "offset_bytes": 1440,
+   "numel": 32,
+   "sha256": "33650bdbf1e0156f2e162bfc1c7558d8670c14ec5d7978d57642b0053f99c35b"
+  },
+  {
+   "name": "xlstm_stack.blocks.0.xlstm.conv1d.conv.weight",
+   "c_name": "xlstm_stack_blocks_0_xlstm_conv1d_conv_weight",
+   "shape": [
+    16,
+    1,
+    11
+   ],
+   "dtype": "float32",
+   "offset_elems": 392,
+   "offset_bytes": 1568,
+   "numel": 176,
+   "sha256": "ba374458015c4162c3cc8b762fad70c18ba5237135aeaf733d5666f69bd5e509"
+  },
+  {
+   "name": "xlstm_stack.blocks.0.xlstm.conv1d.conv.bias",
+   "c_name": "xlstm_stack_blocks_0_xlstm_conv1d_conv_bias",
+   "shape": [
+    16
+   ],
+   "dtype": "float32",
+   "offset_elems": 568,
+   "offset_bytes": 2272,
+   "numel": 16,
+   "sha256": "dec898a063efc56bc90c1d8cf81b640bdb0c23aea301f516c7dd2d4f39dfaae6"
+  },
+  {
+   "name": "xlstm_stack.blocks.0.xlstm.mlstm_cell.igate.weight",
+   "c_name": "xlstm_stack_blocks_0_xlstm_mlstm_cell_igate_weight",
+   "shape": [
+    1,
+    48
+   ],
+   "dtype": "float32",
+   "offset_elems": 584,
+   "offset_bytes": 2336,
+   "numel": 48,
+   "sha256": "365539b5021e6abb8cd88b8c6a0c9cf7da177f628e708d2e894d403408a19d72"
+  },
+  {
+   "name": "xlstm_stack.blocks.0.xlstm.mlstm_cell.igate.bias",
+   "c_name": "xlstm_stack_blocks_0_xlstm_mlstm_cell_igate_bias",
+   "shape": [
+    1
+   ],
+   "dtype": "float32",
+   "offset_elems": 632,
+   "offset_bytes": 2528,
+   "numel": 1,
+   "sha256": "ed82de77aca2b5ae2b3f56d2797689d9bfd64e89086212f752a1013a9ab8ac0d"
+  },
+  {
+   "name": "xlstm_stack.blocks.0.xlstm.mlstm_cell.fgate.weight",
+   "c_name": "xlstm_stack_blocks_0_xlstm_mlstm_cell_fgate_weight",
+   "shape": [
+    1,
+    48
+   ],
+   "dtype": "float32",
+   "offset_elems": 633,
+   "offset_bytes": 2532,
+   "numel": 48,
+   "sha256": "2c060622fda1131eb67cffc3c53f80950d78d0fd4963da81a7c2160b2d876387"
+  },
+  {
+   "name": "xlstm_stack.blocks.0.xlstm.mlstm_cell.fgate.bias",
+   "c_name": "xlstm_stack_blocks_0_xlstm_mlstm_cell_fgate_bias",
+   "shape": [
+    1
+   ],
+   "dtype": "float32",
+   "offset_elems": 681,
+   "offset_bytes": 2724,
+   "numel": 1,
+   "sha256": "bfc0f447918d07928493d4ce52967216ec52d60ea66df8ba398da501aebbd989"
+  },
+  {
+   "name": "xlstm_stack.blocks.0.xlstm.mlstm_cell.outnorm.weight",
+   "c_name": "xlstm_stack_blocks_0_xlstm_mlstm_cell_outnorm_weight",
+   "shape": [
+    16
+   ],
+   "dtype": "float32",
+   "offset_elems": 682,
+   "offset_bytes": 2728,
+   "numel": 16,
+   "sha256": "d23caa6e06452882acaaee5bbd74f8ce81000f6653e7d23328df329598e2256e"
+  },
+  {
+   "name": "xlstm_stack.blocks.0.xlstm.proj_down.weight",
+   "c_name": "xlstm_stack_blocks_0_xlstm_proj_down_weight",
+   "shape": [
+    8,
+    16
+   ],
+   "dtype": "float32",
+   "offset_elems": 698,
+   "offset_bytes": 2792,
+   "numel": 128,
+   "sha256": "b5876d852dc4966be9a5de3d1aa1705c0873edd0f51dfb7da257f6c6e7600b51"
+  },
+  {
+   "name": "xlstm_stack.blocks.1.xlstm_norm.weight",
+   "c_name": "xlstm_stack_blocks_1_xlstm_norm_weight",
+   "shape": [
+    8
+   ],
+   "dtype": "float32",
+   "offset_elems": 826,
+   "offset_bytes": 3304,
+   "numel": 8,
+   "sha256": "7076425e7c2135900c8904f25457d72de7f19dbf1a4d5b8624a36dbb2117fdbc"
+  },
+  {
+   "name": "xlstm_stack.blocks.1.xlstm.learnable_skip",
+   "c_name": "xlstm_stack_blocks_1_xlstm_learnable_skip",
+   "shape": [
+    16
+   ],
+   "dtype": "float32",
+   "offset_elems": 834,
+   "offset_bytes": 3336,
+   "numel": 16,
+   "sha256": "ed28a8a76da93f46cefa59e73b7a462f3cbd1f69a44ba068ec959d3ea2df8625"
+  },
+  {
+   "name": "xlstm_stack.blocks.1.xlstm.proj_up.weight",
+   "c_name": "xlstm_stack_blocks_1_xlstm_proj_up_weight",
+   "shape": [
+    32,
+    8
+   ],
+   "dtype": "float32",
+   "offset_elems": 850,
+   "offset_bytes": 3400,
+   "numel": 256,
+   "sha256": "be391f79d33da668f8575fcf248db2fe4e90a6f82dd84e693d85f0bacaaed13a"
+  },
+  {
+   "name": "xlstm_stack.blocks.1.xlstm.q_proj.weight",
+   "c_name": "xlstm_stack_blocks_1_xlstm_q_proj_weight",
+   "shape": [
+    8,
+    2,
+    2
+   ],
+   "dtype": "float32",
+   "offset_elems": 1106,
+   "offset_bytes": 4424,
+   "numel": 32,
+   "sha256": "d94f09baf86f0d5d5abef5f9e1523dc241a7ccb03969f5effa29a30566bb6ae0"
+  },
+  {
+   "name": "xlstm_stack.blocks.1.xlstm.k_proj.weight",
+   "c_name": "xlstm_stack_blocks_1_xlstm_k_proj_weight",
+   "shape": [
+    8,
+    2,
+    2
+   ],
+   "dtype": "float32",
+   "offset_elems": 1138,
+   "offset_bytes": 4552,
+   "numel": 32,
+   "sha256": "013f8af046a6f97208d48b787cb14cad3b20a566d9430bb89d81993d18185862"
+  },
+  {
+   "name": "xlstm_stack.blocks.1.xlstm.v_proj.weight",
+   "c_name": "xlstm_stack_blocks_1_xlstm_v_proj_weight",
+   "shape": [
+    8,
+    2,
+    2
+   ],
+   "dtype": "float32",
+   "offset_elems": 1170,
+   "offset_bytes": 4680,
+   "numel": 32,
+   "sha256": "2e6a8c8d02b08db1682a218afc57af47ddc267dd4f2fd7bf2c47e75fbaa166fb"
+  },
+  {
+   "name": "xlstm_stack.blocks.1.xlstm.conv1d.conv.weight",
+   "c_name": "xlstm_stack_blocks_1_xlstm_conv1d_conv_weight",
+   "shape": [
+    16,
+    1,
+    11
+   ],
+   "dtype": "float32",
+   "offset_elems": 1202,
+   "offset_bytes": 4808,
+   "numel": 176,
+   "sha256": "605b534f9b32da28bc0b36599c311ba36a75960b1fc7985a765e010b4fc61a21"
+  },
+  {
+   "name": "xlstm_stack.blocks.1.xlstm.conv1d.conv.bias",
+   "c_name": "xlstm_stack_blocks_1_xlstm_conv1d_conv_bias",
+   "shape": [
+    16
+   ],
+   "dtype": "float32",
+   "offset_elems": 1378,
+   "offset_bytes": 5512,
+   "numel": 16,
+   "sha256": "29c7d714535facdaf6fbf24a4736f41946deae1799fdeac2e1f0c4a44d5bf7d8"
+  },
+  {
+   "name": "xlstm_stack.blocks.1.xlstm.mlstm_cell.igate.weight",
+   "c_name": "xlstm_stack_blocks_1_xlstm_mlstm_cell_igate_weight",
+   "shape": [
+    1,
+    48
+   ],
+   "dtype": "float32",
+   "offset_elems": 1394,
+   "offset_bytes": 5576,
+   "numel": 48,
+   "sha256": "fdea8c08d66367ca3964d8bf140cabe98221d22c5b5952457d42234ebc2bfa7f"
+  },
+  {
+   "name": "xlstm_stack.blocks.1.xlstm.mlstm_cell.igate.bias",
+   "c_name": "xlstm_stack_blocks_1_xlstm_mlstm_cell_igate_bias",
+   "shape": [
+    1
+   ],
+   "dtype": "float32",
+   "offset_elems": 1442,
+   "offset_bytes": 5768,
+   "numel": 1,
+   "sha256": "4c06274c85a329d05179c6eef93b5f8617e20d49d2cb206a58caa91616f64a08"
+  },
+  {
+   "name": "xlstm_stack.blocks.1.xlstm.mlstm_cell.fgate.weight",
+   "c_name": "xlstm_stack_blocks_1_xlstm_mlstm_cell_fgate_weight",
+   "shape": [
+    1,
+    48
+   ],
+   "dtype": "float32",
+   "offset_elems": 1443,
+   "offset_bytes": 5772,
+   "numel": 48,
+   "sha256": "1d8cd0ab240a5a41619130d9fec1fd3e53a644d0e12c90c3e96aacd98e844df8"
+  },
+  {
+   "name": "xlstm_stack.blocks.1.xlstm.mlstm_cell.fgate.bias",
+   "c_name": "xlstm_stack_blocks_1_xlstm_mlstm_cell_fgate_bias",
+   "shape": [
+    1
+   ],
+   "dtype": "float32",
+   "offset_elems": 1491,
+   "offset_bytes": 5964,
+   "numel": 1,
+   "sha256": "11fe7ee26999b6286ed5271a06eab59be3cef8f6ac5db89f2988d9b6d0ea0282"
+  },
+  {
+   "name": "xlstm_stack.blocks.1.xlstm.mlstm_cell.outnorm.weight",
+   "c_name": "xlstm_stack_blocks_1_xlstm_mlstm_cell_outnorm_weight",
+   "shape": [
+    16
+   ],
+   "dtype": "float32",
+   "offset_elems": 1492,
+   "offset_bytes": 5968,
+   "numel": 16,
+   "sha256": "5a19e43f0dcaa20cb3f8fc6733aac1e9a403f1c03a2ffb26c396a74986196066"
+  },
+  {
+   "name": "xlstm_stack.blocks.1.xlstm.proj_down.weight",
+   "c_name": "xlstm_stack_blocks_1_xlstm_proj_down_weight",
+   "shape": [
+    8,
+    16
+   ],
+   "dtype": "float32",
+   "offset_elems": 1508,
+   "offset_bytes": 6032,
+   "numel": 128,
+   "sha256": "fc10da829f7a1a29384884121c8eec2d68b7d17226eb33e4d1c6afd2cb6c2909"
+  },
+  {
+   "name": "xlstm_stack.blocks.2.xlstm_norm.weight",
+   "c_name": "xlstm_stack_blocks_2_xlstm_norm_weight",
+   "shape": [
+    8
+   ],
+   "dtype": "float32",
+   "offset_elems": 1636,
+   "offset_bytes": 6544,
+   "numel": 8,
+   "sha256": "f32017d750d582087dc362a607703acb74f23b44a35d56ad6c472094f08e3233"
+  },
+  {
+   "name": "xlstm_stack.blocks.2.xlstm.learnable_skip",
+   "c_name": "xlstm_stack_blocks_2_xlstm_learnable_skip",
+   "shape": [
+    16
+   ],
+   "dtype": "float32",
+   "offset_elems": 1644,
+   "offset_bytes": 6576,
+   "numel": 16,
+   "sha256": "fa6a14f8685fc7ec0c4ecc59edc155a862f04834be58702508edf90381144bf0"
+  },
+  {
+   "name": "xlstm_stack.blocks.2.xlstm.proj_up.weight",
+   "c_name": "xlstm_stack_blocks_2_xlstm_proj_up_weight",
+   "shape": [
+    32,
+    8
+   ],
+   "dtype": "float32",
+   "offset_elems": 1660,
+   "offset_bytes": 6640,
+   "numel": 256,
+   "sha256": "34739d0ab573b9e19b7b64f277ee57149f8345d2abb5ae549f230ebc3520d0d2"
+  },
+  {
+   "name": "xlstm_stack.blocks.2.xlstm.q_proj.weight",
+   "c_name": "xlstm_stack_blocks_2_xlstm_q_proj_weight",
+   "shape": [
+    8,
+    2,
+    2
+   ],
+   "dtype": "float32",
+   "offset_elems": 1916,
+   "offset_bytes": 7664,
+   "numel": 32,
+   "sha256": "a4b9f030e4572c5e715cc364b2e6046bc3636e6e35959d1986b02897e699b2da"
+  },
+  {
+   "name": "xlstm_stack.blocks.2.xlstm.k_proj.weight",
+   "c_name": "xlstm_stack_blocks_2_xlstm_k_proj_weight",
+   "shape": [
+    8,
+    2,
+    2
+   ],
+   "dtype": "float32",
+   "offset_elems": 1948,
+   "offset_bytes": 7792,
+   "numel": 32,
+   "sha256": "acea9bb6bc970a5ffdd5202f343a6d9a11bf8ee446599f5aa674ce70a26bd145"
+  },
+  {
+   "name": "xlstm_stack.blocks.2.xlstm.v_proj.weight",
+   "c_name": "xlstm_stack_blocks_2_xlstm_v_proj_weight",
+   "shape": [
+    8,
+    2,
+    2
+   ],
+   "dtype": "float32",
+   "offset_elems": 1980,
+   "offset_bytes": 7920,
+   "numel": 32,
+   "sha256": "5b9de0bbe0f3876cce6a319a050ce97d385827d580e9682f7e67fb92811cddf7"
+  },
+  {
+   "name": "xlstm_stack.blocks.2.xlstm.conv1d.conv.weight",
+   "c_name": "xlstm_stack_blocks_2_xlstm_conv1d_conv_weight",
+   "shape": [
+    16,
+    1,
+    11
+   ],
+   "dtype": "float32",
+   "offset_elems": 2012,
+   "offset_bytes": 8048,
+   "numel": 176,
+   "sha256": "3d958008dbf315fa4725d021e82194e6b01984f23ed3a20ad18351dc9195c7a5"
+  },
+  {
+   "name": "xlstm_stack.blocks.2.xlstm.conv1d.conv.bias",
+   "c_name": "xlstm_stack_blocks_2_xlstm_conv1d_conv_bias",
+   "shape": [
+    16
+   ],
+   "dtype": "float32",
+   "offset_elems": 2188,
+   "offset_bytes": 8752,
+   "numel": 16,
+   "sha256": "31ff192da3351f0290c3859d9633b47a97f57b8d7787e271f78edb0f65196554"
+  },
+  {
+   "name": "xlstm_stack.blocks.2.xlstm.mlstm_cell.igate.weight",
+   "c_name": "xlstm_stack_blocks_2_xlstm_mlstm_cell_igate_weight",
+   "shape": [
+    1,
+    48
+   ],
+   "dtype": "float32",
+   "offset_elems": 2204,
+   "offset_bytes": 8816,
+   "numel": 48,
+   "sha256": "04f46c6721bec38eda80ea7b1f42b760f05e706a752971553e52493b1d9fe477"
+  },
+  {
+   "name": "xlstm_stack.blocks.2.xlstm.mlstm_cell.igate.bias",
+   "c_name": "xlstm_stack_blocks_2_xlstm_mlstm_cell_igate_bias",
+   "shape": [
+    1
+   ],
+   "dtype": "float32",
+   "offset_elems": 2252,
+   "offset_bytes": 9008,
+   "numel": 1,
+   "sha256": "bb8b94e6f69333b9acfa6da55995eb50ea32ae9cce971f781cd355836ac13f1b"
+  },
+  {
+   "name": "xlstm_stack.blocks.2.xlstm.mlstm_cell.fgate.weight",
+   "c_name": "xlstm_stack_blocks_2_xlstm_mlstm_cell_fgate_weight",
+   "shape": [
+    1,
+    48
+   ],
+   "dtype": "float32",
+   "offset_elems": 2253,
+   "offset_bytes": 9012,
+   "numel": 48,
+   "sha256": "038fff26b9bb608430eff7e488f0d4eef47e75ecdd3450f0f3ac3c04f45a8b04"
+  },
+  {
+   "name": "xlstm_stack.blocks.2.xlstm.mlstm_cell.fgate.bias",
+   "c_name": "xlstm_stack_blocks_2_xlstm_mlstm_cell_fgate_bias",
+   "shape": [
+    1
+   ],
+   "dtype": "float32",
+   "offset_elems": 2301,
+   "offset_bytes": 9204,
+   "numel": 1,
+   "sha256": "79657d786a81ead5f473467bc16b7ca50df1bc20597b5a8f5f9bc39d290ea5fb"
+  },
+  {
+   "name": "xlstm_stack.blocks.2.xlstm.mlstm_cell.outnorm.weight",
+   "c_name": "xlstm_stack_blocks_2_xlstm_mlstm_cell_outnorm_weight",
+   "shape": [
+    16
+   ],
+   "dtype": "float32",
+   "offset_elems": 2302,
+   "offset_bytes": 9208,
+   "numel": 16,
+   "sha256": "4c902aee16a84b2bc029a49159a618728a8bfcb37e767c4e7965544923ee90e9"
+  },
+  {
+   "name": "xlstm_stack.blocks.2.xlstm.proj_down.weight",
+   "c_name": "xlstm_stack_blocks_2_xlstm_proj_down_weight",
+   "shape": [
+    8,
+    16
+   ],
+   "dtype": "float32",
+   "offset_elems": 2318,
+   "offset_bytes": 9272,
+   "numel": 128,
+   "sha256": "46711aa3511c9f1ca6f87d57114df534fda62d605f184ce87345c6994719053a"
+  },
+  {
+   "name": "xlstm_stack.post_blocks_norm.weight",
+   "c_name": "xlstm_stack_post_blocks_norm_weight",
+   "shape": [
+    8
+   ],
+   "dtype": "float32",
+   "offset_elems": 2446,
+   "offset_bytes": 9784,
+   "numel": 8,
+   "sha256": "fee8e98c647f7acaf7682ef236578f96c1bf4f54ea17c6cec35155d088cc26f4"
+  },
+  {
+   "name": "output_proj.weight",
+   "c_name": "output_proj_weight",
+   "shape": [
+    4,
+    16
+   ],
+   "dtype": "float32",
+   "offset_elems": 2454,
+   "offset_bytes": 9816,
+   "numel": 64,
+   "sha256": "120e4e255cdbb82a75c94139b2b71bba115fcf1d66e41037f6081239bdce169f"
+  },
+  {
+   "name": "output_proj.bias",
+   "c_name": "output_proj_bias",
+   "shape": [
+    4
+   ],
+   "dtype": "float32",
+   "offset_elems": 2518,
+   "offset_bytes": 10072,
+   "numel": 4,
+   "sha256": "62e8591808ca97b21f3410da754e5109f09d5ca91f82e97e7f0b7f57a1abc18d"
+  }
+ ]
+}
